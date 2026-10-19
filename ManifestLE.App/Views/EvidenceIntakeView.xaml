@@ -1,0 +1,332 @@
+﻿<UserControl x:Class="ManifestLE.App.Views.EvidenceIntakeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#15181D"
+             Foreground="#F4F6F8"
+             FontFamily="Segoe UI">
+
+    <UserControl.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#171A1F"/>
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="CaretBrush" Value="#F4F6F8"/>
+            <Setter Property="BorderBrush" Value="#64748B"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="0,6,0,16"/>
+            <Setter Property="MaxLength" Value="500"/>
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="Margin" Value="0,6,0,16"/>
+        </Style>
+
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="Background" Value="#171A1F"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder"
+                                        Property="Background"
+                                        Value="#263B50"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder"
+                                        Property="Background"
+                                        Value="#1479D1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ComboBox">
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="Margin" Value="0,6,0,16"/>
+            <Setter Property="MinHeight" Value="42"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton Focusable="False"
+                                IsChecked="{Binding IsDropDownOpen,
+                                    RelativeSource={RelativeSource TemplatedParent},
+                                    Mode=TwoWay}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="#171A1F"
+                                                BorderBrush="#64748B"
+                                                BorderThickness="1">
+                                            <TextBlock Text="▼"
+                                                       Foreground="#D8DDE4"
+                                                       HorizontalAlignment="Right"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,12,0"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+
+                            <TextBlock
+                                Text="{Binding SelectedItem,
+                                    RelativeSource={RelativeSource TemplatedParent}}"
+                                Margin="10,0,35,0"
+                                VerticalAlignment="Center"
+                                TextWrapping="NoWrap"
+                                TextTrimming="CharacterEllipsis"
+                                IsHitTestVisible="False"/>
+
+                            <Popup x:Name="PART_Popup"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Bottom"
+                                   AllowsTransparency="True"
+                                   Focusable="False">
+                                <Border Background="#171A1F"
+                                        BorderBrush="#64748B"
+                                        BorderThickness="1"
+                                        MaxHeight="280"
+                                        MinWidth="{Binding ActualWidth,
+                                            RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ScrollViewer>
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#1479D1"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="20,12"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                BorderBrush="Transparent"
+                                BorderThickness="1"
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="#1168B5"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="ButtonBorder"
+                                        Property="BorderBrush"
+                                        Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Margin="0,0,0,20">
+            <TextBlock Text="Evidence &amp; Property Intake"
+                       FontSize="28"
+                       FontWeight="SemiBold"/>
+            <TextBlock Text="Register an item and record its initial placement into storage."
+                       Foreground="#9CA7B5"
+                       Margin="0,8,0,0"/>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <Border Background="#20242A"
+                    CornerRadius="8"
+                    Padding="22">
+                <StackPanel x:Name="FormPanel">
+                    <TextBlock Text="Record type *"/>
+                    <ComboBox x:Name="RecordTypeBox"
+                              SelectionChanged="RecordTypeBox_SelectionChanged"/>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel>
+                            <TextBlock Text="Case / report number *"/>
+                            <TextBox x:Name="ReportNumberBox"
+                                     MaxLength="100"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Item number *"/>
+                            <TextBox x:Name="ItemNumberBox"
+                                     MaxLength="50"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="Item description *"/>
+                    <TextBox x:Name="DescriptionBox"
+                             MaxLength="4000"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             MinHeight="90"/>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel>
+                            <TextBlock Text="Collected by *"/>
+                            <TextBox x:Name="CollectedByBox"
+                                     MaxLength="150"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Collection date/time and UTC offset *"/>
+                            <TextBox x:Name="CollectedAtBox"
+                                     MaxLength="23"/>
+                            <TextBlock Text="Format: yyyy-MM-dd HH:mm -05:00"
+                                       Foreground="#9CA7B5"
+                                       FontSize="12"
+                                       Margin="0,-8,0,16"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="Found / collection location *"/>
+                    <TextBox x:Name="CollectionLocationBox"/>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel>
+                            <TextBlock Text="Packaging *"/>
+                            <ComboBox x:Name="PackagingBox"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Initial storage location *"/>
+                            <ComboBox x:Name="StorageBox"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="Owner name, if known"/>
+                    <TextBox x:Name="OwnerNameBox"
+                             MaxLength="200"/>
+
+                    <TextBlock Text="Owner contact information"/>
+                    <TextBox x:Name="OwnerContactBox"/>
+
+                    <StackPanel x:Name="FoundPropertyPanel"
+                                Visibility="Collapsed">
+                        <TextBlock Text="Finder name, if known"/>
+                        <TextBox x:Name="FinderNameBox"
+                                 MaxLength="200"/>
+
+                        <TextBlock Text="Finder contact information"/>
+                        <TextBox x:Name="FinderContactBox"/>
+                    </StackPanel>
+
+                    <StackPanel x:Name="SafekeepingPanel"
+                                Visibility="Collapsed">
+                        <TextBlock Text="Reason for safekeeping *"/>
+                        <TextBox x:Name="HoldReasonBox"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 MinHeight="65"/>
+
+                        <TextBlock Text="Documented hold authority / reference *"/>
+                        <TextBox x:Name="HoldAuthorityBox"/>
+
+                        <CheckBox x:Name="IsFirearmBox"
+                                  Content="This item is a firearm"
+                                  Checked="IsFirearmBox_Changed"
+                                  Unchecked="IsFirearmBox_Changed"/>
+
+                        <StackPanel x:Name="FirearmPanel"
+                                    Visibility="Collapsed">
+                            <TextBlock Text="Manufacturer"/>
+                            <TextBox x:Name="ManufacturerBox"
+                                     MaxLength="150"/>
+
+                            <TextBlock Text="Model"/>
+                            <TextBox x:Name="ModelBox"
+                                     MaxLength="150"/>
+
+                            <TextBlock Text="Serial number"/>
+                            <TextBox x:Name="SerialNumberBox"
+                                     MaxLength="150"/>
+
+                            <TextBlock Text="Caliber / gauge"/>
+                            <TextBox x:Name="CaliberBox"
+                                     MaxLength="100"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <TextBlock Text="Intake / custody reason *"/>
+                    <TextBox x:Name="CustodyReasonBox"/>
+
+                    <TextBlock Text="Additional notes"/>
+                    <TextBox x:Name="NotesBox"
+                             MaxLength="4000"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             MinHeight="80"/>
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2" Margin="0,16,0,0">
+            <TextBlock x:Name="StatusText"
+                       Visibility="Collapsed"
+                       Margin="0,0,0,12"/>
+
+            <Button x:Name="SaveButton"
+                    Content="Save Intake"
+                    HorizontalAlignment="Right"
+                    IsEnabled="False"
+                    Click="SaveButton_Click"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

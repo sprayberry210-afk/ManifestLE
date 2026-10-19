@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ManifestLE.App/ManifestLE.App.csproj" />
+  <Project Path="ManifestLE.Core/ManifestLE.Core.csproj" />
+  <Project Path="ManifestLE.Infrastructure/ManifestLE.Infrastructure.csproj" />
+  <Project Path="ManifestLE.Tests/ManifestLE.Tests.csproj" />
+</Solution>
