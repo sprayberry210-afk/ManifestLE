@@ -6,7 +6,27 @@ ManifestLE supports property intake, item-level custody tracking, storage verifi
 
 **Status:** Active development  
 **Tests:** 43 passing automated tests, verified October 18, 2026
+## Screenshots
 
+Screenshots show fictional development data.
+
+### Evidence Records
+
+Separate property items grouped by case, with custody status and storage details.
+
+![Evidence records](docs/screenshots/evidence-records.png)
+
+### Chain of Custody
+
+Item-level history showing intake, transfers, check-outs, and check-ins.
+
+![Chain of custody](docs/screenshots/chain-of-custody.png)
+
+### Inventory Audits
+
+Completed storage audit showing verified and missing items, with inspection controls locked.
+
+![Inventory audit](docs/screenshots/inventory-audit.png)
 ## Features
 
 ### Authentication
