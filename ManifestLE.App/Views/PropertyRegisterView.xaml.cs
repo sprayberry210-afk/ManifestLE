@@ -10,6 +10,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using ManifestLE.Core.Models;
 using ManifestLE.Infrastructure.Data;
+using ManifestLE.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace ManifestLE.App.Views;
@@ -28,6 +29,7 @@ public partial class PropertyRegisterView : UserControl
 
     private readonly Guid _userId;
     private readonly PropertyRegisterType _register;
+    private readonly StorageDisplayService _storageDisplayService = new();
 
     private List<RegisterRow> _rows = new();
 
@@ -59,7 +61,6 @@ public partial class PropertyRegisterView : UserControl
 
         RecordsGrid.Sorting += RecordsGrid_Sorting;
 
-        // Sort the actual timestamp rather than formatted display text.
         foreach (var column in RecordsGrid.Columns)
         {
             if (column is DataGridTextColumn textColumn &&
@@ -100,7 +101,6 @@ public partial class PropertyRegisterView : UserControl
 
         _isLoading = true;
         _hasAccess = false;
-
         RefreshButton.IsEnabled = false;
 
         _rows.Clear();
@@ -128,9 +128,8 @@ public partial class PropertyRegisterView : UserControl
                 return;
             }
 
-            var locations = await database.StorageLocations
-                .AsNoTracking()
-                .ToListAsync();
+            var storageLabels =
+                await _storageDisplayService.GetLabelsAsync(_userId);
 
             var rows = new List<RegisterRow>();
 
@@ -151,9 +150,9 @@ public partial class PropertyRegisterView : UserControl
                         Status = item.Status,
                         CollectedAt = item.CollectedAt,
                         CreatedAt = item.CreatedAt,
-                        StoragePath = BuildPath(
+                        StoragePath = StorageLabel(
                             item.CurrentStorageLocationId,
-                            locations),
+                            storageLabels),
                         OwnerName = item.OwnerName,
                         Details = BuildDetails(
                             ("Register", "Evidence"),
@@ -188,9 +187,9 @@ public partial class PropertyRegisterView : UserControl
                         Status = item.Status,
                         CollectedAt = item.CollectedAt,
                         CreatedAt = item.CreatedAt,
-                        StoragePath = BuildPath(
+                        StoragePath = StorageLabel(
                             item.CurrentStorageLocationId,
-                            locations),
+                            storageLabels),
                         OwnerName = item.OwnerName,
                         Details = BuildDetails(
                             ("Register", "Found Property"),
@@ -227,9 +226,9 @@ public partial class PropertyRegisterView : UserControl
                         Status = item.Status,
                         CollectedAt = item.CollectedAt,
                         CreatedAt = item.CreatedAt,
-                        StoragePath = BuildPath(
+                        StoragePath = StorageLabel(
                             item.CurrentStorageLocationId,
-                            locations),
+                            storageLabels),
                         OwnerName = item.OwnerName,
                         SerialNumber = item.SerialNumber,
                         Details = BuildDetails(
@@ -262,10 +261,6 @@ public partial class PropertyRegisterView : UserControl
                 throw new InvalidOperationException("Unknown register.");
             }
 
-            // There is no separate case record yet.
-            // Use the first item creation date as the case group's
-            // registration date. Adding an item to an older case
-            // does not move that entire case to the top.
             _rows = rows
                 .GroupBy(
                     row => row.ReportNumber.Trim(),
@@ -301,6 +296,15 @@ public partial class PropertyRegisterView : UserControl
             _isLoading = false;
             RefreshButton.IsEnabled = true;
         }
+    }
+
+    private static string StorageLabel(
+        Guid? locationId,
+        IReadOnlyDictionary<Guid, string> labels)
+    {
+        return locationId is null
+            ? "No storage location"
+            : StorageDisplayService.GetLabel(locationId, labels);
     }
 
     private void SearchBox_TextChanged(
@@ -350,7 +354,6 @@ public partial class PropertyRegisterView : UserControl
                  Contains(row.StoragePath, search)))
             .ToList();
 
-        // Search, status changes, and Refresh restore default order.
         RecordsGrid.ItemsSource = filtered;
 
         foreach (var column in RecordsGrid.Columns)
@@ -376,7 +379,6 @@ public partial class PropertyRegisterView : UserControl
 
         if (!isItem && !isCase)
         {
-            // All other columns retain normal WPF sorting.
             return;
         }
 
@@ -466,46 +468,6 @@ public partial class PropertyRegisterView : UserControl
         return value.ToLocalTime().ToString(
             "yyyy-MM-dd HH:mm zzz",
             CultureInfo.InvariantCulture);
-    }
-
-    private static string BuildPath(
-        Guid? locationId,
-        List<StorageLocation> locations)
-    {
-        if (locationId is null)
-        {
-            return "No storage location";
-        }
-
-        var lookup = locations.ToDictionary(x => x.Id);
-        var visited = new HashSet<Guid>();
-        var parts = new List<string>();
-
-        Guid? currentId = locationId;
-
-        while (currentId is Guid id)
-        {
-            if (!visited.Add(id))
-            {
-                parts.Add("[Location cycle]");
-                break;
-            }
-
-            if (!lookup.TryGetValue(id, out var location))
-            {
-                parts.Add("[Location unavailable]");
-                break;
-            }
-
-            parts.Add(location.IsActive
-                ? location.Name
-                : $"{location.Name} (inactive)");
-
-            currentId = location.ParentLocationId;
-        }
-
-        parts.Reverse();
-        return string.Join(" / ", parts);
     }
 
     private sealed class RegisterRowComparer : IComparer
@@ -646,7 +608,6 @@ public partial class PropertyRegisterView : UserControl
                 return remaining;
             }
 
-            // Deterministic order for equivalent values such as 1 and 001.
             return StringComparer.OrdinalIgnoreCase.Compare(left, right);
         }
 

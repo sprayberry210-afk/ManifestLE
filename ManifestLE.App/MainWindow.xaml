@@ -24,7 +24,6 @@
             <Setter Property="MinHeight" Value="44"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="Cursor" Value="Hand"/>
-
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -39,20 +38,15 @@
                                 VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                 RecognizesAccessKey="True"/>
                         </Border>
-
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="ButtonBorder"
-                                        Property="Background"
-                                        Value="#263B50"/>
+                                        Property="Background" Value="#263B50"/>
                             </Trigger>
-
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="ButtonBorder"
-                                        Property="BorderBrush"
-                                        Value="#75B9F1"/>
+                                        Property="BorderBrush" Value="#75B9F1"/>
                             </Trigger>
-
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.45"/>
                                 <Setter Property="Cursor" Value="Arrow"/>
@@ -77,8 +71,7 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0"
-                Background="#171A1F"
+        <Border Background="#171A1F"
                 BorderBrush="#2D333B"
                 BorderThickness="0,0,1,0">
             <Grid Margin="16">
@@ -88,7 +81,7 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <StackPanel Grid.Row="0" Margin="12,16,0,22">
+                <StackPanel Margin="12,16,0,22">
                     <TextBlock Text="ManifestLE"
                                Foreground="#F4F6F8"
                                FontSize="27"
@@ -153,18 +146,43 @@
                                 IsEnabled="False"
                                 Click="InventoryAuditsButton_Click"/>
 
-                        <TextBlock Text="SYSTEM"
-                                   Style="{StaticResource NavigationSection}"/>
+                        <TextBlock Text="SYSTEM">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock"
+                                       BasedOn="{StaticResource NavigationSection}">
+                                    <Setter Property="Visibility"
+                                            Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsEnabled,
+                                                     ElementName=AuditHistoryButton}"
+                                                     Value="True">
+                                            <Setter Property="Visibility"
+                                                    Value="Visible"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsEnabled,
+                                                     ElementName=UserAdministrationButton}"
+                                                     Value="True">
+                                            <Setter Property="Visibility"
+                                                    Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
 
                         <Button x:Name="AuditHistoryButton"
                                 Content="Audit History"
                                 Style="{StaticResource NavigationButton}"
+                                Visibility="Collapsed"
                                 IsEnabled="False"
                                 Click="AuditHistoryButton_Click"/>
 
-                        <Button Content="Administration"
+                        <Button x:Name="UserAdministrationButton"
+                                Content="User Administration"
                                 Style="{StaticResource NavigationButton}"
-                                IsEnabled="False"/>
+                                Visibility="Collapsed"
+                                IsEnabled="False"
+                                Click="UserAdministrationButton_Click"/>
                     </StackPanel>
                 </ScrollViewer>
 

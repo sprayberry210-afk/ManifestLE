@@ -1,0 +1,342 @@
+﻿<UserControl x:Class="ManifestLE.App.Views.UserAdministrationView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#15181D"
+             Foreground="#F4F6F8"
+             FontFamily="Segoe UI">
+
+    <UserControl.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#171A1F"/>
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="CaretBrush" Value="#F4F6F8"/>
+            <Setter Property="BorderBrush" Value="#64748B"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="0,6,0,16"/>
+        </Style>
+
+        <Style TargetType="PasswordBox">
+            <Setter Property="Background" Value="#171A1F"/>
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="CaretBrush" Value="#F4F6F8"/>
+            <Setter Property="BorderBrush" Value="#64748B"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="0,6,0,16"/>
+            <Setter Property="MaxLength" Value="128"/>
+        </Style>
+
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="Background" Value="#171A1F"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder"
+                                        Property="Background" Value="#263B50"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder"
+                                        Property="Background" Value="#1479D1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="RoleComboBox" TargetType="ComboBox">
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="Background" Value="#171A1F"/>
+            <Setter Property="MinHeight" Value="42"/>
+            <Setter Property="Margin" Value="0,6,0,16"/>
+            <Setter Property="DisplayMemberPath" Value="Name"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen,
+                                          RelativeSource={RelativeSource TemplatedParent},
+                                          Mode=TwoWay}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="#171A1F"
+                                                BorderBrush="#64748B"
+                                                BorderThickness="1">
+                                            <TextBlock Text="▼"
+                                                       HorizontalAlignment="Right"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,12,0"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+
+                            <TextBlock Text="{Binding SelectedItem.Name,
+                                       RelativeSource={RelativeSource TemplatedParent}}"
+                                       Margin="10,0,35,0"
+                                       VerticalAlignment="Center"
+                                       IsHitTestVisible="False"/>
+
+                            <Popup x:Name="PART_Popup"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Bottom"
+                                   AllowsTransparency="True"
+                                   Focusable="False">
+                                <Border Background="#171A1F"
+                                        BorderBrush="#64748B"
+                                        BorderThickness="1"
+                                        MinWidth="{Binding ActualWidth,
+                                        RelativeSource={RelativeSource TemplatedParent}}"
+                                        MaxHeight="280">
+                                    <ScrollViewer>
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#1479D1"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="18,12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background" Value="#1168B5"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#171A1F"/>
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="10"/>
+        </Style>
+
+        <Style TargetType="DataGridCell">
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Background="{TemplateBinding Background}"
+                                Padding="8">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#263B50"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel>
+            <TextBlock Text="User Administration"
+                       FontSize="28" FontWeight="SemiBold"/>
+
+            <TextBlock Text="Create accounts and maintain officer details."
+                       Foreground="#9CA7B5" Margin="0,8,0,20"/>
+
+            <Border Background="#20242A" CornerRadius="8"
+                    Padding="20" Margin="0,0,0,20">
+                <StackPanel>
+                    <TextBlock Text="Create Account"
+                               FontSize="20" FontWeight="SemiBold"
+                               Margin="0,0,0,16"/>
+
+                    <Grid x:Name="FormPanel" IsEnabled="False">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel>
+                            <TextBlock Text="Display name *"/>
+                            <TextBox x:Name="DisplayNameBox" MaxLength="200"/>
+
+                            <TextBlock Text="Username *"/>
+                            <TextBox x:Name="UsernameBox" MaxLength="50"/>
+
+                            <TextBlock Text="Badge number"/>
+                            <TextBox x:Name="BadgeNumberBox" MaxLength="30"/>
+
+                            <TextBlock Text="Role *"/>
+                            <ComboBox x:Name="RoleBox"
+                                      Style="{StaticResource RoleComboBox}"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Password *"/>
+                            <PasswordBox x:Name="PasswordInput"/>
+
+                            <TextBlock Text="Confirm password *"/>
+                            <PasswordBox x:Name="ConfirmPasswordInput"/>
+
+                            <TextBlock
+                                Text="Use 15–128 characters. New users enroll their own authenticator on first sign-in."
+                                Foreground="#9CA7B5"/>
+
+                            <TextBlock
+                                Text="Officer is the patrol role. Administrator grants full administrative access."
+                                Foreground="#9CA7B5" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Button x:Name="CreateButton"
+                            Content="Create Account"
+                            HorizontalAlignment="Right"
+                            IsEnabled="False"
+                            Click="CreateButton_Click"/>
+                </StackPanel>
+            </Border>
+
+            <TextBlock x:Name="StatusText"
+                       Visibility="Collapsed" Margin="0,0,0,16"/>
+
+            <Grid Margin="0,0,0,12">
+                <TextBlock Text="Accounts" FontSize="20"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+
+                <Button x:Name="RefreshButton"
+                        Content="Refresh"
+                        HorizontalAlignment="Right"
+                        IsEnabled="False"
+                        Click="RefreshButton_Click"/>
+            </Grid>
+
+            <TextBlock Text="Select an account below to edit its display name or badge number."
+                       Foreground="#9CA7B5" Margin="0,0,0,12"/>
+
+            <DataGrid x:Name="UsersGrid"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      SelectionMode="Single"
+                      SelectionUnit="FullRow"
+                      SelectionChanged="UsersGrid_SelectionChanged"
+                      HeadersVisibility="Column"
+                      RowHeight="44"
+                      MaxHeight="352"
+                      VerticalAlignment="Top"
+                      Background="#20242A"
+                      RowBackground="#20242A"
+                      AlternatingRowBackground="#171A1F"
+                      Foreground="#F4F6F8"
+                      BorderBrush="#2D333B"
+                      GridLinesVisibility="None"
+                      ScrollViewer.CanContentScroll="True"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.ScrollUnit="Pixel"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Display Name"
+                                        Binding="{Binding DisplayName}" Width="*"/>
+                    <DataGridTextColumn Header="Username"
+                                        Binding="{Binding Username}" Width="*"/>
+                    <DataGridTextColumn Header="Badge"
+                                        Binding="{Binding BadgeDisplay}" Width="90"/>
+                    <DataGridTextColumn Header="Role"
+                                        Binding="{Binding Role}" Width="*"/>
+                    <DataGridTextColumn Header="Status"
+                                        Binding="{Binding Status}" Width="100"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <Border x:Name="EditorCard"
+                    Visibility="Collapsed"
+                    Background="#20242A"
+                    CornerRadius="8"
+                    Padding="20"
+                    Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Text="Edit Account Details"
+                               FontSize="20" FontWeight="SemiBold"/>
+
+                    <TextBlock x:Name="EditingAccountText"
+                               Foreground="#9CA7B5" Margin="0,8,0,16"/>
+
+                    <Grid x:Name="EditFormPanel">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel>
+                            <TextBlock Text="Display name *"/>
+                            <TextBox x:Name="EditDisplayNameBox"
+                                     MaxLength="200"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Badge number"/>
+                            <TextBox x:Name="EditBadgeNumberBox"
+                                     MaxLength="30"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Right">
+                        <Button x:Name="CancelEditButton"
+                                Content="Cancel"
+                                Margin="0,0,12,0"
+                                Click="CancelEditButton_Click"/>
+
+                        <Button x:Name="SaveDetailsButton"
+                                Content="Save Details"
+                                Click="SaveDetailsButton_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -15,9 +15,12 @@ public class AppUser
 
     public string DisplayName { get; set; } = string.Empty;
 
+    public string BadgeNumber { get; set; } = string.Empty;
+
     public UserRole Role { get; set; } = UserRole.Officer;
 
     public bool IsActive { get; set; } = true;
 
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset CreatedAt { get; set; }
+        = DateTimeOffset.UtcNow;
 }

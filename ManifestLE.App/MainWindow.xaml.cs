@@ -103,21 +103,25 @@ public partial class MainWindow : Window
                 $"ManifestLE — {agency.Name} | " +
                 $"{_currentUser.DisplayName} | Development";
 
-            bool canAccessAudits = CanAccessAudits();
-
-            AuditHistoryButton.IsEnabled = canAccessAudits;
-            InventoryAuditsButton.IsEnabled = canAccessAudits;
+            ApplyNavigationPermissions();
 
             DashboardWelcomeText.Text =
                 $"Signed in to {agency.Name}. " +
-                "Use the registers to inspect property and " +
-                "Chain of Custody to record movements.";
+                "Use Item Intake to submit property and " +
+                "the registers to inspect records.";
 
-            if (canAccessAudits)
+            if (CanAccessAudits())
             {
                 DashboardWelcomeText.Text +=
-                    " Use Inventory Audits to verify stored property " +
+                    " Use Chain of Custody to record movements, " +
+                    "Inventory Audits to verify stored property, " +
                     "and Audit History to review application activity.";
+            }
+
+            if (IsAdministrator())
+            {
+                DashboardWelcomeText.Text +=
+                    " Use User Administration to create individual accounts.";
             }
 
             ShowDashboard();
@@ -136,11 +140,41 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ApplyNavigationPermissions()
+    {
+        bool canAccessAudits = CanAccessAudits();
+        bool isAdministrator = IsAdministrator();
+
+        AuditHistoryButton.IsEnabled = canAccessAudits;
+        AuditHistoryButton.Visibility = canAccessAudits
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        InventoryAuditsButton.IsEnabled = canAccessAudits;
+        InventoryAuditsButton.Visibility = canAccessAudits
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        UserAdministrationButton.IsEnabled = isAdministrator;
+        UserAdministrationButton.Visibility = isAdministrator
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
     private bool CanAccessAudits()
     {
         return _currentUser is { IsActive: true } &&
                (_currentUser.Role == UserRole.Administrator ||
                 _currentUser.Role == UserRole.EvidenceCustodian);
+    }
+
+    private bool IsAdministrator()
+    {
+        return _currentUser is
+        {
+            IsActive: true,
+            Role: UserRole.Administrator
+        };
     }
 
     private void DashboardButton_Click(
@@ -272,6 +306,21 @@ public partial class MainWindow : Window
         SetActiveNavigation(AuditHistoryButton);
     }
 
+    private void UserAdministrationButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (!IsAdministrator())
+        {
+            return;
+        }
+
+        WorkspaceContent.Content =
+            new UserAdministrationView(_currentUser!.Id);
+
+        SetActiveNavigation(UserAdministrationButton);
+    }
+
     private void ShowDashboard()
     {
         WorkspaceContent.Content = DashboardPanel;
@@ -290,7 +339,8 @@ public partial class MainWindow : Window
             ChainOfCustodyButton,
             StorageLocationsButton,
             InventoryAuditsButton,
-            AuditHistoryButton
+            AuditHistoryButton,
+            UserAdministrationButton
         };
 
         foreach (var button in buttons)

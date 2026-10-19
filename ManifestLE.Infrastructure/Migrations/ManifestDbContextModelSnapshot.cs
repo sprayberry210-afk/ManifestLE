@@ -53,6 +53,10 @@ namespace ManifestLE.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("BadgeNumber")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
@@ -614,6 +618,9 @@ namespace ManifestLE.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("LocationType")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")

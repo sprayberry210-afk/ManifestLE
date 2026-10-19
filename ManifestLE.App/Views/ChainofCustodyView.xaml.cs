@@ -16,6 +16,7 @@ public partial class ChainOfCustodyView : UserControl
 {
     private readonly Guid _userId;
     private readonly CustodyService _custodyService = new();
+    private readonly StorageDisplayService _storageDisplayService = new();
 
     private bool _ready;
     private bool _busy;
@@ -29,7 +30,8 @@ public partial class ChainOfCustodyView : UserControl
     private string _displayName = string.Empty;
     private string _lastRecipient = string.Empty;
 
-    private List<StorageLocation> _locations = new();
+    private IReadOnlyDictionary<Guid, string> _locationLabels =
+        new Dictionary<Guid, string>();
 
     public ChainOfCustodyView()
         : this(Guid.Empty)
@@ -41,6 +43,9 @@ public partial class ChainOfCustodyView : UserControl
         InitializeComponent();
 
         _userId = userId;
+
+        SelectionPanel.IsEnabled = false;
+        SetMovementVisibility(false);
 
         RegisterBox.ItemsSource = new[]
         {
@@ -79,20 +84,24 @@ public partial class ChainOfCustodyView : UserControl
 
             if (!IsActiveUser(user))
             {
-                SelectionPanel.IsEnabled = false;
-                ShowStatus("Your account cannot access custody records.", true);
+                ShowStatus(
+                    "Your account cannot access custody records.",
+                    true);
                 return;
             }
 
             _displayName = user!.DisplayName;
             _canManage = CanManage(user);
-
             _ready = true;
+
+            SelectionPanel.IsEnabled = true;
             RegisterBox.SelectedIndex = 0;
         }
         catch (Exception)
         {
-            ShowStatus("Custody records could not be initialized.", true);
+            ShowStatus(
+                "Custody records could not be initialized.",
+                true);
         }
     }
 
@@ -112,6 +121,45 @@ public partial class ChainOfCustodyView : UserControl
                 user.Role == UserRole.EvidenceCustodian);
     }
 
+    private void SetMovementVisibility(bool visible)
+    {
+        MovementPanel.Visibility = visible
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        SaveButton.Visibility = visible
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        MovementPanel.IsEnabled = false;
+        SaveButton.IsEnabled = false;
+    }
+
+    private void ClearDisplayedItem()
+    {
+        SetMovementVisibility(false);
+
+        _displayedStatus = null;
+        _displayedLocationId = null;
+        _lastRecipient = string.Empty;
+
+        _locationLabels = new Dictionary<Guid, string>();
+
+        ActionBox.ItemsSource = null;
+        DestinationBox.ItemsSource = null;
+
+        FromCustodianBox.Clear();
+        ToCustodianBox.Clear();
+        ReasonBox.Clear();
+        NotesBox.Clear();
+
+        CurrentLocationText.Text = string.Empty;
+        CurrentCustodianText.Text = string.Empty;
+        ActionHelpText.Text = string.Empty;
+
+        HistoryBox.Text = "Select an item to view its custody history.";
+    }
+
     private async void RegisterBox_SelectionChanged(
         object sender,
         SelectionChangedEventArgs e)
@@ -123,18 +171,12 @@ public partial class ChainOfCustodyView : UserControl
         }
 
         ++_selectionVersion;
-
         _busy = true;
+
         SelectionPanel.IsEnabled = false;
-        MovementPanel.IsEnabled = false;
-        SaveButton.IsEnabled = false;
-        _displayedStatus = null;
+        ClearDisplayedItem();
 
         ItemBox.ItemsSource = null;
-        ActionBox.ItemsSource = null;
-        CurrentLocationText.Text = string.Empty;
-        CurrentCustodianText.Text = string.Empty;
-        HistoryBox.Text = "Select an item to view its custody history.";
         StatusText.Visibility = Visibility.Collapsed;
 
         try
@@ -142,12 +184,30 @@ public partial class ChainOfCustodyView : UserControl
             await using var database =
                 DevelopmentDatabase.CreateContext();
 
+            var user = await database.Users
+                .AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Id == _userId);
+
+            if (!IsActiveUser(user))
+            {
+                _ready = false;
+                _canManage = false;
+
+                ShowStatus(
+                    "Your account cannot access custody records.",
+                    true);
+                return;
+            }
+
+            _canManage = CanManage(user);
+
             List<ItemChoice> items;
 
             switch (register.Type)
             {
                 case PropertyRegisterKind.Evidence:
-                    items = await database.EvidenceItems.AsNoTracking()
+                    items = await database.EvidenceItems
+                        .AsNoTracking()
                         .Select(x => new ItemChoice
                         {
                             Id = x.Id,
@@ -158,7 +218,8 @@ public partial class ChainOfCustodyView : UserControl
                     break;
 
                 case PropertyRegisterKind.FoundProperty:
-                    items = await database.FoundPropertyItems.AsNoTracking()
+                    items = await database.FoundPropertyItems
+                        .AsNoTracking()
                         .Select(x => new ItemChoice
                         {
                             Id = x.Id,
@@ -169,7 +230,8 @@ public partial class ChainOfCustodyView : UserControl
                     break;
 
                 case PropertyRegisterKind.Safekeeping:
-                    items = await database.SafekeepingItems.AsNoTracking()
+                    items = await database.SafekeepingItems
+                        .AsNoTracking()
                         .Select(x => new ItemChoice
                         {
                             Id = x.Id,
@@ -180,10 +242,13 @@ public partial class ChainOfCustodyView : UserControl
                     break;
 
                 default:
-                    throw new InvalidOperationException("Unknown register.");
+                    throw new InvalidOperationException(
+                        "Unknown register.");
             }
 
-            ItemBox.ItemsSource = items.OrderBy(x => x.Name).ToList();
+            ItemBox.ItemsSource = items
+                .OrderBy(x => x.Name)
+                .ToList();
 
             if (items.Count == 0)
             {
@@ -197,7 +262,7 @@ public partial class ChainOfCustodyView : UserControl
         finally
         {
             _busy = false;
-            SelectionPanel.IsEnabled = true;
+            SelectionPanel.IsEnabled = _ready;
         }
     }
 
@@ -218,17 +283,7 @@ public partial class ChainOfCustodyView : UserControl
         int version = ++_selectionVersion;
         _loadingItem = true;
 
-        MovementPanel.IsEnabled = false;
-        SaveButton.IsEnabled = false;
-        _displayedStatus = null;
-        ActionBox.ItemsSource = null;
-
-        FromCustodianBox.Clear();
-        ToCustodianBox.Clear();
-        ReasonBox.Clear();
-        NotesBox.Clear();
-        CurrentLocationText.Text = string.Empty;
-        CurrentCustodianText.Text = string.Empty;
+        ClearDisplayedItem();
         HistoryBox.Text = "Loading custody history…";
         StatusText.Visibility = Visibility.Collapsed;
 
@@ -245,23 +300,54 @@ public partial class ChainOfCustodyView : UserControl
             await using var database =
                 DevelopmentDatabase.CreateContext();
 
-            var user = await database.Users.AsNoTracking()
+            var user = await database.Users
+                .AsNoTracking()
                 .SingleOrDefaultAsync(x => x.Id == _userId);
 
             if (!IsActiveUser(user))
             {
+                if (version == _selectionVersion)
+                {
+                    _ready = false;
+                    _canManage = false;
+                    SelectionPanel.IsEnabled = false;
+                }
+
                 throw new InvalidOperationException(
                     "Your account cannot access custody records.");
             }
+
+            bool canManage = CanManage(user);
 
             var state = await LoadStateAsync(
                 database,
                 register.Type,
                 item.Id);
 
-            var locations = await database.StorageLocations
-                .AsNoTracking()
-                .ToListAsync();
+            var locationLabels =
+                await _storageDisplayService.GetLabelsAsync(_userId);
+
+            var destinations = new List<LocationChoice>();
+
+            if (canManage)
+            {
+                var destinationIds = await database.StorageLocations
+                    .AsNoTracking()
+                    .Where(x => x.IsActive)
+                    .Select(x => x.Id)
+                    .ToListAsync();
+
+                destinations = destinationIds
+                    .Select(id => new LocationChoice
+                    {
+                        Id = id,
+                        Name = StorageDisplayService.GetLabel(
+                            id,
+                            locationLabels)
+                    })
+                    .OrderBy(x => x.Name)
+                    .ToList();
+            }
 
             var query = database.CustodyEvents.AsNoTracking();
 
@@ -273,12 +359,34 @@ public partial class ChainOfCustodyView : UserControl
                 PropertyRegisterKind.FoundProperty =>
                     query.Where(x => x.FoundPropertyItemId == item.Id),
 
-                _ => query.Where(x => x.SafekeepingItemId == item.Id)
+                PropertyRegisterKind.Safekeeping =>
+                    query.Where(x => x.SafekeepingItemId == item.Id),
+
+                _ => throw new InvalidOperationException(
+                    "Unknown register.")
             };
 
-            var events = await query.ToListAsync();
+            // Project only the history fields allowed for this role.
+            // Internal reason and notes are withheld for patrol.
+            var events = await query
+                .Select(x => new HistoryEntry
+                {
+                    Id = x.Id,
+                    EventType = x.EventType,
+                    OccurredAt = x.OccurredAt,
+                    RecordedAt = x.RecordedAt,
+                    RecordedByUserId = x.RecordedByUserId,
+                    FromCustodian = x.FromCustodian,
+                    ToCustodian = x.ToCustodian,
+                    FromStorageLocationId = x.FromStorageLocationId,
+                    ToStorageLocationId = x.ToStorageLocationId,
+                    Reason = canManage ? x.Reason : string.Empty,
+                    Notes = canManage ? x.Notes : string.Empty
+                })
+                .ToListAsync();
 
-            var names = await database.Users.AsNoTracking()
+            var names = await database.Users
+                .AsNoTracking()
                 .ToDictionaryAsync(x => x.Id, x => x.DisplayName);
 
             if (version != _selectionVersion)
@@ -287,14 +395,15 @@ public partial class ChainOfCustodyView : UserControl
             }
 
             _displayName = user!.DisplayName;
-            _canManage = CanManage(user);
-            _locations = locations;
+            _canManage = canManage;
+            _locationLabels = locationLabels;
             _displayedStatus = state.Status;
             _displayedLocationId = state.LocationId;
 
             var orderedEvents = events
                 .OrderByDescending(x => x.OccurredAt)
                 .ThenByDescending(x => x.RecordedAt)
+                .ThenByDescending(x => x.Id)
                 .ToList();
 
             _lastRecipient = orderedEvents
@@ -310,60 +419,47 @@ public partial class ChainOfCustodyView : UserControl
                     ? "Last recorded recipient: Not recorded"
                     : $"Last recorded recipient: {_lastRecipient}";
 
-            DestinationBox.ItemsSource = _locations
-                .Where(x => x.IsActive)
-                .Select(x => new LocationChoice
-                {
-                    Id = x.Id,
-                    Name = LocationPath(x.Id)
-                })
-                .OrderBy(x => x.Name)
-                .ToList();
-
             HistoryBox.Text = orderedEvents.Count == 0
                 ? "No custody events recorded."
                 : string.Join(
                     "\n\n────────────────────────\n\n",
                     orderedEvents.Select(x =>
-                        $"{x.EventType} — " +
-                        $"{x.OccurredAt.ToLocalTime():yyyy-MM-dd HH:mm:ss zzz}\n" +
-                        $"From: {x.FromCustodian}\n" +
-                        $"To: {x.ToCustodian}\n" +
-                        $"From storage: {LocationPath(x.FromStorageLocationId)}\n" +
-                        $"To storage: {LocationPath(x.ToStorageLocationId)}\n" +
-                        $"Reason: {x.Reason}\n" +
-                        $"Notes: {x.Notes}\n" +
-                        $"Recorded by: {names.GetValueOrDefault(x.RecordedByUserId, "Unknown user")}\n" +
-                        $"Recorded: {x.RecordedAt.ToLocalTime():yyyy-MM-dd HH:mm:ss zzz}"));
+                        FormatHistoryEntry(x, names, canManage)));
+
+            DestinationBox.ItemsSource = destinations;
 
             var actions = new List<ActionChoice>();
 
-            if (state.Status == EvidenceStatus.InCustody &&
-                state.LocationId.HasValue)
+            if (_canManage)
             {
-                actions.Add(new ActionChoice
+                if (state.Status == EvidenceStatus.InCustody &&
+                    state.LocationId.HasValue)
                 {
-                    Action = CustodyEventType.Transfer,
-                    Name = "Storage transfer"
-                });
+                    actions.Add(new ActionChoice
+                    {
+                        Action = CustodyEventType.Transfer,
+                        Name = "Storage transfer"
+                    });
 
-                actions.Add(new ActionChoice
+                    actions.Add(new ActionChoice
+                    {
+                        Action = CustodyEventType.CheckOut,
+                        Name = "Check out"
+                    });
+                }
+                else if (state.Status == EvidenceStatus.CheckedOut &&
+                         state.LocationId is null)
                 {
-                    Action = CustodyEventType.CheckOut,
-                    Name = "Check out"
-                });
-            }
-            else if (state.Status == EvidenceStatus.CheckedOut &&
-                     state.LocationId is null)
-            {
-                actions.Add(new ActionChoice
-                {
-                    Action = CustodyEventType.CheckIn,
-                    Name = "Check in"
-                });
+                    actions.Add(new ActionChoice
+                    {
+                        Action = CustodyEventType.CheckIn,
+                        Name = "Check in"
+                    });
+                }
             }
 
             ActionBox.ItemsSource = actions;
+            SetMovementVisibility(_canManage);
 
             if (actions.Count > 0)
             {
@@ -376,9 +472,9 @@ public partial class ChainOfCustodyView : UserControl
             if (!_canManage)
             {
                 ShowStatus(
-                    "An administrator or evidence custodian " +
-                    "must record custody movements.",
-                    true);
+                    "Read-only custody history. Permanent storage " +
+                    "locations and internal reasons and notes are restricted.",
+                    false);
             }
             else if (actions.Count == 0)
             {
@@ -394,6 +490,7 @@ public partial class ChainOfCustodyView : UserControl
         {
             if (version == _selectionVersion)
             {
+                ClearDisplayedItem();
                 HistoryBox.Text = "Custody history is unavailable.";
                 ShowStatus("Item details could not be loaded.", true);
             }
@@ -407,6 +504,37 @@ public partial class ChainOfCustodyView : UserControl
                 _loadingItem = false;
             }
         }
+    }
+
+    private string FormatHistoryEntry(
+        HistoryEntry entry,
+        IReadOnlyDictionary<Guid, string> names,
+        bool includeInternalDetails)
+    {
+        string text =
+            $"{ReadableEvent(entry.EventType)} — " +
+            $"{entry.OccurredAt.ToLocalTime():yyyy-MM-dd HH:mm:ss zzz}\n" +
+            $"From: {entry.FromCustodian}\n" +
+            $"To: {entry.ToCustodian}\n" +
+            $"From storage: {LocationPath(entry.FromStorageLocationId)}\n" +
+            $"To storage: {LocationPath(entry.ToStorageLocationId)}\n";
+
+        if (includeInternalDetails)
+        {
+            text +=
+                $"Reason: {entry.Reason}\n" +
+                $"Notes: {entry.Notes}\n";
+        }
+
+        string recordedBy = names.TryGetValue(
+            entry.RecordedByUserId,
+            out string? name)
+                ? name
+                : "Unknown user";
+
+        return text +
+            $"Recorded by: {recordedBy}\n" +
+            $"Recorded: {entry.RecordedAt.ToLocalTime():yyyy-MM-dd HH:mm:ss zzz}";
     }
 
     private void ActionBox_SelectionChanged(
@@ -442,11 +570,10 @@ public partial class ChainOfCustodyView : UserControl
         FromCustodianBox.Text = _displayName;
         ToCustodianBox.Text = _displayName;
 
-        bool checkout = choice.Action == CustodyEventType.CheckOut;
-
-        DestinationPanel.Visibility = checkout
-            ? Visibility.Collapsed
-            : Visibility.Visible;
+        DestinationPanel.Visibility =
+            choice.Action == CustodyEventType.CheckOut
+                ? Visibility.Collapsed
+                : Visibility.Visible;
 
         switch (choice.Action)
         {
@@ -491,6 +618,14 @@ public partial class ChainOfCustodyView : UserControl
             return;
         }
 
+        if (!_canManage)
+        {
+            ShowStatus(
+                "Patrol accounts cannot record custody movements.",
+                true);
+            return;
+        }
+
         if (RegisterBox.SelectedItem is not RegisterChoice register ||
             ItemBox.SelectedItem is not ItemChoice item ||
             ActionBox.SelectedItem is not ActionChoice action ||
@@ -506,7 +641,9 @@ public partial class ChainOfCustodyView : UserControl
         {
             if (DestinationBox.SelectedItem is not LocationChoice destination)
             {
-                ShowStatus("Choose a destination storage location.", true);
+                ShowStatus(
+                    "Choose a destination storage location.",
+                    true);
                 return;
             }
 
@@ -567,12 +704,14 @@ public partial class ChainOfCustodyView : UserControl
         finally
         {
             _busy = false;
-            SelectionPanel.IsEnabled = true;
+            SelectionPanel.IsEnabled = _ready;
 
-            // Keep entered values on failure.
-            MovementPanel.IsEnabled = _canManage;
-            SaveButton.IsEnabled = _canManage &&
-                                   _displayedStatus.HasValue;
+            bool allowed = _canManage &&
+                           _displayedStatus.HasValue &&
+                           ActionBox.SelectedItem is ActionChoice;
+
+            MovementPanel.IsEnabled = allowed;
+            SaveButton.IsEnabled = allowed;
         }
 
         if (saved)
@@ -635,39 +774,23 @@ public partial class ChainOfCustodyView : UserControl
 
     private string LocationPath(Guid? locationId)
     {
-        if (locationId is null)
+        return StorageDisplayService.GetLabel(
+            locationId,
+            _locationLabels);
+    }
+
+    private static string ReadableEvent(CustodyEventType type)
+    {
+        return type switch
         {
-            return "None";
-        }
-
-        var parts = new List<string>();
-        var visited = new HashSet<Guid>();
-
-        while (locationId is Guid id)
-        {
-            if (!visited.Add(id))
-            {
-                parts.Add("[Location cycle]");
-                break;
-            }
-
-            var location = _locations.FirstOrDefault(x => x.Id == id);
-
-            if (location is null)
-            {
-                parts.Add("[Location unavailable]");
-                break;
-            }
-
-            parts.Add(location.IsActive
-                ? location.Name
-                : $"{location.Name} (inactive)");
-
-            locationId = location.ParentLocationId;
-        }
-
-        parts.Reverse();
-        return string.Join(" / ", parts);
+            CustodyEventType.Intake => "Intake",
+            CustodyEventType.Transfer => "Storage Transfer",
+            CustodyEventType.CheckOut => "Check Out",
+            CustodyEventType.CheckIn => "Check In",
+            CustodyEventType.Release => "Release",
+            CustodyEventType.Disposal => "Disposal",
+            _ => type.ToString()
+        };
     }
 
     private static string ReadableStatus(EvidenceStatus status)
@@ -715,6 +838,21 @@ public partial class ChainOfCustodyView : UserControl
     {
         public CustodyEventType Action { get; set; }
         public string Name { get; set; } = string.Empty;
+    }
+
+    private sealed class HistoryEntry
+    {
+        public Guid Id { get; set; }
+        public CustodyEventType EventType { get; set; }
+        public DateTimeOffset OccurredAt { get; set; }
+        public DateTimeOffset RecordedAt { get; set; }
+        public Guid RecordedByUserId { get; set; }
+        public string FromCustodian { get; set; } = string.Empty;
+        public string ToCustodian { get; set; } = string.Empty;
+        public Guid? FromStorageLocationId { get; set; }
+        public Guid? ToStorageLocationId { get; set; }
+        public string Reason { get; set; } = string.Empty;
+        public string Notes { get; set; } = string.Empty;
     }
 
     private sealed record ItemState(

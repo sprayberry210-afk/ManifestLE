@@ -36,13 +36,11 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
                                 <Setter TargetName="ItemBorder"
-                                        Property="Background"
-                                        Value="#263B50"/>
+                                        Property="Background" Value="#263B50"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="ItemBorder"
-                                        Property="Background"
-                                        Value="#1479D1"/>
+                                        Property="Background" Value="#1479D1"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -50,27 +48,26 @@
             </Setter>
         </Style>
 
-        <Style x:Key="ParentLocationComboBox" TargetType="ComboBox">
+        <Style x:Key="LocationComboBox" TargetType="ComboBox">
             <Setter Property="Foreground" Value="#F4F6F8"/>
             <Setter Property="Background" Value="#171A1F"/>
             <Setter Property="Margin" Value="0,6,0,16"/>
             <Setter Property="MinHeight" Value="42"/>
+            <Setter Property="DisplayMemberPath" Value="Name"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
                         <Grid>
-                            <ToggleButton
-                                Focusable="False"
-                                IsChecked="{Binding IsDropDownOpen,
-                                    RelativeSource={RelativeSource TemplatedParent},
-                                    Mode=TwoWay}">
+                            <ToggleButton Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen,
+                                          RelativeSource={RelativeSource TemplatedParent},
+                                          Mode=TwoWay}">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
                                         <Border Background="#171A1F"
                                                 BorderBrush="#64748B"
                                                 BorderThickness="1">
                                             <TextBlock Text="▼"
-                                                       Foreground="#D8DDE4"
                                                        HorizontalAlignment="Right"
                                                        VerticalAlignment="Center"
                                                        Margin="0,0,12,0"/>
@@ -79,15 +76,13 @@
                                 </ToggleButton.Template>
                             </ToggleButton>
 
-                            <TextBlock
-                                Text="{Binding SelectedItem.Name,
-                                    RelativeSource={RelativeSource TemplatedParent}}"
-                                Foreground="{TemplateBinding Foreground}"
-                                Margin="10,0,35,0"
-                                VerticalAlignment="Center"
-                                TextWrapping="NoWrap"
-                                TextTrimming="CharacterEllipsis"
-                                IsHitTestVisible="False"/>
+                            <TextBlock Text="{Binding SelectedItem.Name,
+                                       RelativeSource={RelativeSource TemplatedParent}}"
+                                       Margin="10,0,35,0"
+                                       VerticalAlignment="Center"
+                                       TextWrapping="NoWrap"
+                                       TextTrimming="CharacterEllipsis"
+                                       IsHitTestVisible="False"/>
 
                             <Popup x:Name="PART_Popup"
                                    IsOpen="{TemplateBinding IsDropDownOpen}"
@@ -98,7 +93,7 @@
                                         BorderBrush="#64748B"
                                         BorderThickness="1"
                                         MinWidth="{Binding ActualWidth,
-                                            RelativeSource={RelativeSource TemplatedParent}}"
+                                        RelativeSource={RelativeSource TemplatedParent}}"
                                         MaxHeight="280">
                                     <ScrollViewer>
                                         <ItemsPresenter/>
@@ -106,6 +101,11 @@
                                 </Border>
                             </Popup>
                         </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -121,8 +121,6 @@
                         <Border x:Name="ButtonBorder"
                                 Background="{TemplateBinding Background}"
                                 Padding="{TemplateBinding Padding}"
-                                BorderBrush="Transparent"
-                                BorderThickness="1"
                                 CornerRadius="6">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center"/>
@@ -130,13 +128,7 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="ButtonBorder"
-                                        Property="Background"
-                                        Value="#1168B5"/>
-                            </Trigger>
-                            <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="ButtonBorder"
-                                        Property="BorderBrush"
-                                        Value="White"/>
+                                        Property="Background" Value="#1168B5"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.5"/>
@@ -152,8 +144,6 @@
             <Setter Property="Foreground" Value="#F4F6F8"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="Padding" Value="10"/>
-            <Setter Property="BorderBrush" Value="#2D333B"/>
-            <Setter Property="BorderThickness" Value="0,0,0,1"/>
         </Style>
 
         <Style TargetType="DataGridCell">
@@ -179,98 +169,94 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-
-        <StackPanel Margin="0,0,0,20">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel>
             <TextBlock Text="Storage Locations"
-                       FontSize="28"
-                       FontWeight="SemiBold"/>
-            <TextBlock Text="Create rooms, cabinets, shelves, and lockers."
-                       Foreground="#9CA7B5"
-                       Margin="0,8,0,0"/>
+                       FontSize="28" FontWeight="SemiBold"/>
+            <TextBlock Text="Manage permanent storage and temporary intake lockers."
+                       Foreground="#9CA7B5" Margin="0,8,0,20"/>
+
+            <Border Background="#20242A" CornerRadius="8"
+                    Padding="20" Margin="0,0,0,20">
+                <StackPanel>
+                    <Grid x:Name="FormPanel" IsEnabled="False">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel>
+                            <TextBlock Text="Location name *"/>
+                            <TextBox x:Name="NameBox" MaxLength="100"/>
+
+                            <TextBlock Text="Description"/>
+                            <TextBox x:Name="DescriptionBox"
+                                     MaxLength="500"
+                                     TextWrapping="Wrap"
+                                     AcceptsReturn="True"
+                                     MinHeight="70"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Location type *"/>
+                            <ComboBox x:Name="LocationTypeBox"
+                                      Style="{StaticResource LocationComboBox}"
+                                      SelectionChanged="LocationTypeBox_SelectionChanged"/>
+
+                            <TextBlock Text="Parent location"/>
+                            <ComboBox x:Name="ParentBox"
+                                      Style="{StaticResource LocationComboBox}"/>
+
+                            <TextBlock
+                                Text="Parents must have the same location type. Temporary lockers can be created without a parent."
+                                Foreground="#9CA7B5"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock x:Name="StatusText"
+                               Visibility="Collapsed" Margin="0,0,0,12"/>
+
+                    <Button x:Name="SaveButton"
+                            Content="Add Location"
+                            HorizontalAlignment="Right"
+                            IsEnabled="False"
+                            Click="SaveButton_Click"/>
+                </StackPanel>
+            </Border>
+
+            <DataGrid x:Name="LocationsGrid"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      HeadersVisibility="Column"
+                      RowHeight="44"
+                      MaxHeight="440"
+                      VerticalAlignment="Top"
+                      Background="#20242A"
+                      RowBackground="#20242A"
+                      AlternatingRowBackground="#171A1F"
+                      Foreground="#F4F6F8"
+                      BorderBrush="#2D333B"
+                      GridLinesVisibility="None"
+                      ScrollViewer.CanContentScroll="True"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.ScrollUnit="Pixel"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Location"
+                                        Binding="{Binding Name}" Width="*"/>
+                    <DataGridTextColumn Header="Type"
+                                        Binding="{Binding LocationType}" Width="120"/>
+                    <DataGridTextColumn Header="Parent"
+                                        Binding="{Binding ParentName}" Width="*"/>
+                    <DataGridTextColumn Header="Description"
+                                        Binding="{Binding Description}" Width="2*"/>
+                </DataGrid.Columns>
+            </DataGrid>
         </StackPanel>
-
-        <Border Grid.Row="1"
-                Background="#20242A"
-                CornerRadius="8"
-                Padding="20"
-                Margin="0,0,0,20">
-            <StackPanel>
-                <Grid x:Name="FormPanel">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="20"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel>
-                        <TextBlock Text="Location name *"/>
-                        <TextBox x:Name="NameBox" MaxLength="100"/>
-
-                        <TextBlock Text="Description"/>
-                        <TextBox x:Name="DescriptionBox"
-                                 MaxLength="500"
-                                 TextWrapping="Wrap"
-                                 AcceptsReturn="True"
-                                 Height="70"/>
-                    </StackPanel>
-
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="Parent location"/>
-                        <ComboBox x:Name="ParentBox"
-                                  Style="{StaticResource ParentLocationComboBox}"
-                                  DisplayMemberPath="Name"/>
-
-                        <TextBlock
-                            Text="Choose no parent for a top-level location, such as an evidence room."
-                            Foreground="#9CA7B5"/>
-                    </StackPanel>
-                </Grid>
-
-                <TextBlock x:Name="StatusText"
-                           Visibility="Collapsed"
-                           Margin="0,0,0,12"/>
-
-                <Button x:Name="SaveButton"
-                        Content="Add Location"
-                        HorizontalAlignment="Right"
-                        IsEnabled="False"
-                        Click="SaveButton_Click"/>
-            </StackPanel>
-        </Border>
-
-        <DataGrid x:Name="LocationsGrid"
-                  Grid.Row="2"
-                  AutoGenerateColumns="False"
-                  IsReadOnly="True"
-                  CanUserAddRows="False"
-                  CanUserDeleteRows="False"
-                  HeadersVisibility="Column"
-                  RowHeight="44"
-                  Background="#20242A"
-                  RowBackground="#20242A"
-                  AlternatingRowBackground="#171A1F"
-                  Foreground="#F4F6F8"
-                  BorderBrush="#2D333B"
-                  GridLinesVisibility="None"
-                  HorizontalScrollBarVisibility="Auto"
-                  VerticalScrollBarVisibility="Auto">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Location"
-                                    Binding="{Binding Name}"
-                                    Width="*"/>
-                <DataGridTextColumn Header="Parent"
-                                    Binding="{Binding ParentName}"
-                                    Width="*"/>
-                <DataGridTextColumn Header="Description"
-                                    Binding="{Binding Description}"
-                                    Width="2*"/>
-            </DataGrid.Columns>
-        </DataGrid>
-    </Grid>
+    </ScrollViewer>
 </UserControl>

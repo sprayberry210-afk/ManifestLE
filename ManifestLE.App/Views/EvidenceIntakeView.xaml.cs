@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using ManifestLE.Core.Models;
 using ManifestLE.Infrastructure.Data;
+using ManifestLE.Infrastructure.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +19,7 @@ public partial class EvidenceIntakeView : UserControl
 
     private readonly Guid _userId;
     private bool _isSaving;
+    private bool _canIntake;
     private string _defaultCollector = string.Empty;
 
     public EvidenceIntakeView()
@@ -51,8 +53,11 @@ public partial class EvidenceIntakeView : UserControl
         };
 
         RecordTypeBox.SelectedIndex = 0;
-        SetCollectionTime();
 
+        FormPanel.IsEnabled = false;
+        SaveButton.IsEnabled = false;
+
+        SetCollectionTime();
         Loaded += EvidenceIntakeView_Loaded;
     }
 
@@ -73,20 +78,21 @@ public partial class EvidenceIntakeView : UserControl
 
             if (!CanIntake(user))
             {
-                FormPanel.IsEnabled = false;
-                ShowStatus("You do not have permission to enter items.", true);
+                ShowStatus(
+                    "You do not have permission to enter items.",
+                    true);
                 return;
             }
 
             _defaultCollector = user!.DisplayName;
             CollectedByBox.Text = _defaultCollector;
 
-            var locations = await database.StorageLocations
-                .AsNoTracking()
-                .ToListAsync();
+            var locations =
+                await StorageAccessService.GetIntakeLocationsAsync(
+                    database,
+                    _userId);
 
             StorageBox.ItemsSource = locations
-                .Where(x => x.IsActive)
                 .Select(x => new LocationChoice
                 {
                     Id = x.Id,
@@ -95,19 +101,36 @@ public partial class EvidenceIntakeView : UserControl
                 .OrderBy(x => x.Name)
                 .ToList();
 
-            if (!locations.Any(x => x.IsActive))
+            if (locations.Count == 0)
             {
-                ShowStatus("Add an active storage location before intake.", true);
+                ShowStatus(
+                    user.Role == UserRole.Officer
+                        ? "No active temporary lockers are available. " +
+                          "Contact an administrator."
+                        : "Add an active storage location before intake.",
+                    true);
                 return;
             }
 
-            SaveButton.IsEnabled = true;
+            _canIntake = true;
+
+            if (user.Role == UserRole.Officer)
+            {
+                ShowStatus(
+                    "Submit property to a temporary locker. " +
+                    "Authorized staff will review and receive it.",
+                    false);
+            }
         }
         catch (Exception)
         {
-            FormPanel.IsEnabled = false;
-            SaveButton.IsEnabled = false;
+            _canIntake = false;
+            StorageBox.ItemsSource = null;
             ShowStatus("Intake could not be initialized.", true);
+        }
+        finally
+        {
+            UpdateControls();
         }
     }
 
@@ -122,7 +145,7 @@ public partial class EvidenceIntakeView : UserControl
 
     private static string BuildPath(
         StorageLocation location,
-        List<StorageLocation> locations)
+        List<StorageLocation> permittedLocations)
     {
         var parts = new List<string>();
         var visited = new HashSet<Guid>();
@@ -133,7 +156,7 @@ public partial class EvidenceIntakeView : UserControl
             parts.Add(current.Name);
 
             current = current.ParentLocationId is Guid parentId
-                ? locations.FirstOrDefault(x => x.Id == parentId)
+                ? permittedLocations.FirstOrDefault(x => x.Id == parentId)
                 : null;
         }
 
@@ -184,7 +207,7 @@ public partial class EvidenceIntakeView : UserControl
         object sender,
         RoutedEventArgs e)
     {
-        if (_isSaving)
+        if (_isSaving || !_canIntake)
         {
             return;
         }
@@ -229,7 +252,6 @@ public partial class EvidenceIntakeView : UserControl
                 "Enter collection time as yyyy-MM-dd HH:mm " +
                 "followed by its UTC offset, such as -05:00.",
                 true);
-
             return;
         }
 
@@ -250,7 +272,9 @@ public partial class EvidenceIntakeView : UserControl
              packaging == "Unpackaged / see notes") &&
             string.IsNullOrWhiteSpace(notes))
         {
-            ShowStatus("Describe the packaging circumstances in notes.", true);
+            ShowStatus(
+                "Describe the packaging circumstances in notes.",
+                true);
             return;
         }
 
@@ -261,17 +285,14 @@ public partial class EvidenceIntakeView : UserControl
             ShowStatus(
                 "Enter the safekeeping reason and documented authority.",
                 true);
-
             return;
         }
 
         _isSaving = true;
-        SaveButton.IsEnabled = false;
-        FormPanel.IsEnabled = false;
+        UpdateControls();
 
         bool saved = false;
         Guid recordId = Guid.NewGuid();
-        string entityType = string.Empty;
 
         try
         {
@@ -282,22 +303,30 @@ public partial class EvidenceIntakeView : UserControl
                 await database.Database.BeginTransactionAsync();
 
             var user = await database.Users
+                .AsNoTracking()
                 .SingleOrDefaultAsync(x => x.Id == _userId);
 
             if (!CanIntake(user))
             {
+                _canIntake = false;
                 ShowStatus("Your account cannot enter items.", true);
                 return;
             }
 
-            if (!await database.StorageLocations.AnyAsync(
-                x => x.Id == storage.Id && x.IsActive))
-            {
-                ShowStatus(
-                    "The selected storage location is unavailable. " +
-                    "Reopen intake.",
-                    true);
+            StorageLocation validatedLocation;
 
+            try
+            {
+                validatedLocation =
+                    await StorageAccessService.RequireIntakeLocationAsync(
+                        database,
+                        _userId,
+                        storage.Id);
+            }
+            catch (InvalidOperationException ex)
+            {
+                StorageBox.SelectedIndex = -1;
+                ShowStatus(ex.Message, true);
                 return;
             }
 
@@ -324,23 +353,26 @@ public partial class EvidenceIntakeView : UserControl
                     "That case/report and item number already exist " +
                     "in the selected register.",
                     true);
-
                 return;
             }
+
+            DateTimeOffset now = DateTimeOffset.UtcNow;
 
             var custody = new CustodyEvent
             {
                 EventType = CustodyEventType.Intake,
-                OccurredAt = DateTimeOffset.UtcNow,
+                OccurredAt = now,
+                RecordedAt = now,
                 RecordedByUserId = _userId,
                 FromCustodian = collector,
                 ToCustodian = user!.DisplayName,
-                ToStorageLocationId = storage.Id,
+                ToStorageLocationId = validatedLocation.Id,
                 Reason = reason
             };
 
             string ownerName = OwnerNameBox.Text.Trim();
             string ownerContact = OwnerContactBox.Text.Trim();
+            string entityType;
 
             if (type == 0)
             {
@@ -359,7 +391,7 @@ public partial class EvidenceIntakeView : UserControl
                     OwnerName = ownerName,
                     OwnerContact = ownerContact,
                     Notes = notes,
-                    CurrentStorageLocationId = storage.Id
+                    CurrentStorageLocationId = validatedLocation.Id
                 });
 
                 custody.EvidenceItemId = recordId;
@@ -383,7 +415,7 @@ public partial class EvidenceIntakeView : UserControl
                     FinderName = FinderNameBox.Text.Trim(),
                     FinderContact = FinderContactBox.Text.Trim(),
                     Notes = notes,
-                    CurrentStorageLocationId = storage.Id
+                    CurrentStorageLocationId = validatedLocation.Id
                 });
 
                 custody.FoundPropertyItemId = recordId;
@@ -417,7 +449,7 @@ public partial class EvidenceIntakeView : UserControl
                     Caliber = isFirearm
                         ? CaliberBox.Text.Trim() : string.Empty,
                     Notes = notes,
-                    CurrentStorageLocationId = storage.Id
+                    CurrentStorageLocationId = validatedLocation.Id
                 });
 
                 custody.SafekeepingItemId = recordId;
@@ -428,11 +460,15 @@ public partial class EvidenceIntakeView : UserControl
             database.AuditLogEntries.Add(new AuditLogEntry
             {
                 UserId = _userId,
+                RecordedAt = now,
                 Action = $"{entityType}.Intake",
                 EntityType = entityType,
                 EntityId = recordId,
                 Details =
-                    $"Report {report}, item {itemNumber} entered into storage."
+                    $"Report {report}, item {itemNumber} entered into storage. " +
+                    $"Storage type: {validatedLocation.LocationType}. " +
+                    $"Storage ID: {validatedLocation.Id}. " +
+                    $"Custody event: {custody.Id}."
             });
 
             await database.SaveChangesAsync();
@@ -458,8 +494,7 @@ public partial class EvidenceIntakeView : UserControl
         finally
         {
             _isSaving = false;
-            FormPanel.IsEnabled = true;
-            SaveButton.IsEnabled = true;
+            UpdateControls();
         }
 
         if (saved)
@@ -471,6 +506,14 @@ public partial class EvidenceIntakeView : UserControl
                 "with its initial custody and audit records.",
                 false);
         }
+    }
+
+    private void UpdateControls()
+    {
+        bool enabled = _canIntake && !_isSaving;
+
+        FormPanel.IsEnabled = enabled;
+        SaveButton.IsEnabled = enabled;
     }
 
     private void ClearAfterSave()
@@ -504,7 +547,6 @@ public partial class EvidenceIntakeView : UserControl
     private void ShowStatus(string message, bool isError)
     {
         StatusText.Text = message;
-
         StatusText.Foreground = isError
             ? new SolidColorBrush(Color.FromRgb(255, 155, 155))
             : new SolidColorBrush(Color.FromRgb(134, 239, 172));
@@ -518,9 +560,6 @@ public partial class EvidenceIntakeView : UserControl
 
         public string Name { get; set; } = string.Empty;
 
-        public override string ToString()
-        {
-            return Name;
-        }
+        public override string ToString() => Name;
     }
 }

@@ -14,7 +14,10 @@ namespace ManifestLE.App.Views;
 public partial class StorageLocationsView : UserControl
 {
     private readonly Guid _userId;
+    private readonly List<StorageLocation> _locations = new();
+
     private bool _isSaving;
+    private bool _canManage;
 
     public StorageLocationsView()
         : this(Guid.Empty)
@@ -26,7 +29,27 @@ public partial class StorageLocationsView : UserControl
         InitializeComponent();
 
         _userId = userId;
+
+        LocationTypeBox.ItemsSource = new[]
+        {
+            new LocationTypeChoice(
+                StorageLocationType.Permanent,
+                "Permanent"),
+            new LocationTypeChoice(
+                StorageLocationType.Temporary,
+                "Temporary")
+        };
+
+        LocationTypeBox.SelectedIndex = 0;
         Loaded += StorageLocationsView_Loaded;
+    }
+
+    private static bool CanManage(AppUser? user)
+    {
+        return user is not null &&
+               user.IsActive &&
+               (user.Role == UserRole.Administrator ||
+                user.Role == UserRole.EvidenceCustodian);
     }
 
     private async void StorageLocationsView_Loaded(
@@ -39,46 +62,69 @@ public partial class StorageLocationsView : UserControl
         {
             await LoadLocationsAsync();
 
-            await using var database =
-                DevelopmentDatabase.CreateContext();
-
-            var user = await database.Users
-                .AsNoTracking()
-                .SingleOrDefaultAsync(x => x.Id == _userId);
-
-            bool canManage = user is not null &&
-                user.IsActive &&
-                (user.Role == UserRole.Administrator ||
-                 user.Role == UserRole.EvidenceCustodian);
-
-            FormPanel.IsEnabled = canManage;
-            SaveButton.IsEnabled = canManage;
-
-            if (!canManage)
+            if (!_canManage)
             {
                 ShowStatus(
-                    "Only administrators and evidence custodians " +
-                    "can add storage locations.",
-                    true);
+                    "You can view temporary intake locations. " +
+                    "Only authorized staff can manage storage locations.",
+                    false);
             }
         }
         catch (Exception)
         {
-            SaveButton.IsEnabled = false;
-            ShowStatus("Storage locations could not be loaded.", true);
+            _canManage = false;
+            _locations.Clear();
+            LocationsGrid.ItemsSource = null;
+            ParentBox.ItemsSource = null;
+
+            ShowStatus(
+                "Storage locations could not be loaded.",
+                true);
+        }
+        finally
+        {
+            UpdateControls();
         }
     }
 
     private async Task LoadLocationsAsync()
     {
+        _canManage = false;
+        _locations.Clear();
+        LocationsGrid.ItemsSource = null;
+        ParentBox.ItemsSource = null;
+        UpdateControls();
+
         await using var database =
             DevelopmentDatabase.CreateContext();
 
-        var locations = await database.StorageLocations
+        var user = await database.Users
             .AsNoTracking()
-            .Where(x => x.IsActive)
+            .SingleOrDefaultAsync(x => x.Id == _userId);
+
+        if (user is null || !user.IsActive)
+        {
+            throw new InvalidOperationException(
+                "An active signed-in account is required.");
+        }
+
+        bool canManage = CanManage(user);
+
+        var query = database.StorageLocations
+            .AsNoTracking()
+            .Where(x => x.IsActive);
+
+        if (!canManage)
+        {
+            query = query.Where(
+                x => x.LocationType == StorageLocationType.Temporary);
+        }
+
+        var locations = await query
             .OrderBy(x => x.Name)
             .ToListAsync();
+
+        _locations.AddRange(locations);
 
         var namesById = locations.ToDictionary(
             x => x.Id,
@@ -87,36 +133,54 @@ public partial class StorageLocationsView : UserControl
         LocationsGrid.ItemsSource = locations.Select(x => new
         {
             x.Name,
+            LocationType = x.LocationType.ToString(),
             ParentName = x.ParentLocationId is Guid parentId
-                ? namesById.GetValueOrDefault(
-                    parentId,
-                    "Inactive parent")
+                ? namesById.GetValueOrDefault(parentId, "—")
                 : "—",
             x.Description
         }).ToList();
 
-        var parentChoices = new List<ParentChoice>
+        _canManage = canManage;
+        RebuildParentChoices();
+        UpdateControls();
+    }
+
+    private void LocationTypeBox_SelectionChanged(
+        object sender,
+        SelectionChangedEventArgs e)
+    {
+        RebuildParentChoices();
+    }
+
+    private void RebuildParentChoices()
+    {
+        if (ParentBox is null)
         {
-            new ParentChoice
-            {
-                Id = null,
-                Name = "(No parent — top level)"
-            }
+            return;
+        }
+
+        var choices = new List<ParentChoice>
+        {
+            new(null, "(No parent — top level)")
         };
 
-        parentChoices.AddRange(locations.Select(x => new ParentChoice
+        if (_canManage &&
+            LocationTypeBox.SelectedItem is LocationTypeChoice type)
         {
-            Id = x.Id,
-            Name = BuildLocationPath(x, locations)
-        }));
+            choices.AddRange(
+                _locations
+                    .Where(x => x.LocationType == type.Value)
+                    .Select(x => new ParentChoice(
+                        x.Id,
+                        BuildLocationPath(x)))
+                    .OrderBy(x => x.Name));
+        }
 
-        ParentBox.ItemsSource = parentChoices;
+        ParentBox.ItemsSource = choices;
         ParentBox.SelectedIndex = 0;
     }
 
-    private static string BuildLocationPath(
-        StorageLocation location,
-        List<StorageLocation> locations)
+    private string BuildLocationPath(StorageLocation location)
     {
         var parts = new List<string>();
         var visited = new HashSet<Guid>();
@@ -127,7 +191,9 @@ public partial class StorageLocationsView : UserControl
             parts.Add(current.Name);
 
             current = current.ParentLocationId is Guid parentId
-                ? locations.FirstOrDefault(x => x.Id == parentId)
+                ? _locations.FirstOrDefault(x =>
+                    x.Id == parentId &&
+                    x.LocationType == location.LocationType)
                 : null;
         }
 
@@ -139,7 +205,7 @@ public partial class StorageLocationsView : UserControl
         object sender,
         RoutedEventArgs e)
     {
-        if (_isSaving)
+        if (_isSaving || !_canManage)
         {
             return;
         }
@@ -156,6 +222,22 @@ public partial class StorageLocationsView : UserControl
             return;
         }
 
+        if (name.Length > 100 || description.Length > 500)
+        {
+            ShowStatus(
+                "Use at most 100 characters for the name " +
+                "and 500 for the description.",
+                true);
+            return;
+        }
+
+        if (LocationTypeBox.SelectedItem is not LocationTypeChoice type ||
+            !Enum.IsDefined(typeof(StorageLocationType), type.Value))
+        {
+            ShowStatus("Choose a valid location type.", true);
+            return;
+        }
+
         if (ParentBox.SelectedItem is not ParentChoice parent)
         {
             ShowStatus("Choose a parent location or no parent.", true);
@@ -163,8 +245,7 @@ public partial class StorageLocationsView : UserControl
         }
 
         _isSaving = true;
-        SaveButton.IsEnabled = false;
-        FormPanel.IsEnabled = false;
+        UpdateControls();
 
         bool saved = false;
 
@@ -179,28 +260,31 @@ public partial class StorageLocationsView : UserControl
             var user = await database.Users
                 .SingleOrDefaultAsync(x => x.Id == _userId);
 
-            if (user is null ||
-                !user.IsActive ||
-                (user.Role != UserRole.Administrator &&
-                 user.Role != UserRole.EvidenceCustodian))
+            if (!CanManage(user))
             {
+                _canManage = false;
+
                 ShowStatus(
                     "You do not have permission to add locations.",
                     true);
-
                 return;
             }
 
-            if (parent.Id is Guid parentId &&
-                !await database.StorageLocations.AnyAsync(
-                    x => x.Id == parentId && x.IsActive))
+            if (parent.Id is Guid parentId)
             {
-                ShowStatus(
-                    "The parent location is no longer available. " +
-                    "Reopen this screen.",
-                    true);
+                var parentLocation = await database.StorageLocations
+                    .SingleOrDefaultAsync(x => x.Id == parentId);
 
-                return;
+                if (parentLocation is null ||
+                    !parentLocation.IsActive ||
+                    parentLocation.LocationType != type.Value)
+                {
+                    ShowStatus(
+                        "The parent must be an active location " +
+                        "with the same type. Reopen this screen.",
+                        true);
+                    return;
+                }
             }
 
             var siblingNames = await database.StorageLocations
@@ -218,7 +302,6 @@ public partial class StorageLocationsView : UserControl
                     "A location with this name already exists " +
                     "under the selected parent.",
                     true);
-
                 return;
             }
 
@@ -227,6 +310,7 @@ public partial class StorageLocationsView : UserControl
                 Name = name,
                 Description = description,
                 ParentLocationId = parent.Id,
+                LocationType = type.Value,
                 IsActive = true
             };
 
@@ -238,7 +322,10 @@ public partial class StorageLocationsView : UserControl
                 Action = "StorageLocation.Created",
                 EntityType = nameof(StorageLocation),
                 EntityId = location.Id,
-                Details = $"Storage location created: {name}."
+                Details =
+                    $"Storage location created: {name}. " +
+                    $"Type: {type.Value}. " +
+                    $"Parent: {parent.Id?.ToString() ?? "None"}."
             });
 
             await database.SaveChangesAsync();
@@ -253,8 +340,7 @@ public partial class StorageLocationsView : UserControl
         finally
         {
             _isSaving = false;
-            SaveButton.IsEnabled = true;
-            FormPanel.IsEnabled = true;
+            UpdateControls();
         }
 
         if (!saved)
@@ -273,11 +359,25 @@ public partial class StorageLocationsView : UserControl
         }
         catch (Exception)
         {
+            _canManage = false;
+            _locations.Clear();
+            LocationsGrid.ItemsSource = null;
+            ParentBox.ItemsSource = null;
+            UpdateControls();
+
             ShowStatus(
                 "Location saved, but the table could not refresh. " +
                 "Reopen this screen.",
                 true);
         }
+    }
+
+    private void UpdateControls()
+    {
+        bool enabled = _canManage && !_isSaving;
+
+        FormPanel.IsEnabled = enabled;
+        SaveButton.IsEnabled = enabled;
     }
 
     private void ShowStatus(string message, bool isError)
@@ -290,10 +390,9 @@ public partial class StorageLocationsView : UserControl
         StatusText.Visibility = Visibility.Visible;
     }
 
-    private sealed class ParentChoice
-    {
-        public Guid? Id { get; set; }
+    private sealed record ParentChoice(Guid? Id, string Name);
 
-        public string Name { get; set; } = string.Empty;
-    }
+    private sealed record LocationTypeChoice(
+        StorageLocationType Value,
+        string Name);
 }
