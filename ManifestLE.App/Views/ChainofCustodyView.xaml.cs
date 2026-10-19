@@ -22,6 +22,7 @@ public partial class ChainOfCustodyView : UserControl
     private bool _busy;
     private bool _loadingItem;
     private bool _canManage;
+    private bool _historyLoaded;
     private int _selectionVersion;
 
     private EvidenceStatus? _displayedStatus;
@@ -32,6 +33,11 @@ public partial class ChainOfCustodyView : UserControl
 
     private IReadOnlyDictionary<Guid, string> _locationLabels =
         new Dictionary<Guid, string>();
+
+    private IReadOnlyDictionary<Guid, string> _historyNames =
+        new Dictionary<Guid, string>();
+
+    private List<HistoryEntry> _historyEntries = new();
 
     public ChainOfCustodyView()
         : this(Guid.Empty)
@@ -142,8 +148,11 @@ public partial class ChainOfCustodyView : UserControl
         _displayedStatus = null;
         _displayedLocationId = null;
         _lastRecipient = string.Empty;
+        _historyLoaded = false;
 
         _locationLabels = new Dictionary<Guid, string>();
+        _historyNames = new Dictionary<Guid, string>();
+        _historyEntries.Clear();
 
         ActionBox.ItemsSource = null;
         DestinationBox.ItemsSource = null;
@@ -157,6 +166,8 @@ public partial class ChainOfCustodyView : UserControl
         CurrentCustodianText.Text = string.Empty;
         ActionHelpText.Text = string.Empty;
 
+        NewestFirstBox.IsEnabled = false;
+        HistoryOrderText.Text = "Select an item to view its timeline.";
         HistoryBox.Text = "Select an item to view its custody history.";
     }
 
@@ -366,8 +377,6 @@ public partial class ChainOfCustodyView : UserControl
                     "Unknown register.")
             };
 
-            // Project only the history fields allowed for this role.
-            // Internal reason and notes are withheld for patrol.
             var events = await query
                 .Select(x => new HistoryEntry
                 {
@@ -400,13 +409,15 @@ public partial class ChainOfCustodyView : UserControl
             _displayedStatus = state.Status;
             _displayedLocationId = state.LocationId;
 
-            var orderedEvents = events
+            _historyEntries = events;
+            _historyNames = names;
+            _historyLoaded = true;
+
+            // The latest recipient is independent of display order.
+            _lastRecipient = events
                 .OrderByDescending(x => x.OccurredAt)
                 .ThenByDescending(x => x.RecordedAt)
                 .ThenByDescending(x => x.Id)
-                .ToList();
-
-            _lastRecipient = orderedEvents
                 .Select(x => x.ToCustodian)
                 .FirstOrDefault() ?? string.Empty;
 
@@ -419,12 +430,8 @@ public partial class ChainOfCustodyView : UserControl
                     ? "Last recorded recipient: Not recorded"
                     : $"Last recorded recipient: {_lastRecipient}";
 
-            HistoryBox.Text = orderedEvents.Count == 0
-                ? "No custody events recorded."
-                : string.Join(
-                    "\n\n────────────────────────\n\n",
-                    orderedEvents.Select(x =>
-                        FormatHistoryEntry(x, names, canManage)));
+            RenderHistory();
+            NewestFirstBox.IsEnabled = events.Count > 1;
 
             DestinationBox.ItemsSource = destinations;
 
@@ -504,6 +511,60 @@ public partial class ChainOfCustodyView : UserControl
                 _loadingItem = false;
             }
         }
+    }
+
+    private void HistoryOrder_Changed(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (HistoryBox is null ||
+            HistoryOrderText is null ||
+            !_historyLoaded)
+        {
+            return;
+        }
+
+        RenderHistory();
+    }
+
+    private void RenderHistory()
+    {
+        if (!_historyLoaded)
+        {
+            return;
+        }
+
+        bool newestFirst = NewestFirstBox.IsChecked == true;
+
+        var ordered = newestFirst
+            ? _historyEntries
+                .OrderByDescending(x => x.OccurredAt)
+                .ThenByDescending(x => x.RecordedAt)
+                .ThenByDescending(x => x.Id)
+            : _historyEntries
+                .OrderBy(x => x.OccurredAt)
+                .ThenBy(x => x.RecordedAt)
+                .ThenBy(x => x.Id);
+
+        string orderLabel = newestFirst
+            ? "Newest first"
+            : "Oldest first";
+
+        HistoryOrderText.Text =
+            $"{_historyEntries.Count} custody events • {orderLabel}";
+
+        HistoryBox.Text = _historyEntries.Count == 0
+            ? "No custody events recorded."
+            : string.Join(
+                "\n\n────────────────────────\n\n",
+                ordered.Select(x =>
+                    FormatHistoryEntry(
+                        x,
+                        _historyNames,
+                        _canManage)));
+
+        HistoryBox.CaretIndex = 0;
+        HistoryBox.ScrollToHome();
     }
 
     private string FormatHistoryEntry(
@@ -669,6 +730,7 @@ public partial class ChainOfCustodyView : UserControl
         SelectionPanel.IsEnabled = false;
         MovementPanel.IsEnabled = false;
         SaveButton.IsEnabled = false;
+        NewestFirstBox.IsEnabled = false;
         StatusText.Visibility = Visibility.Collapsed;
 
         bool saved = false;
@@ -712,6 +774,9 @@ public partial class ChainOfCustodyView : UserControl
 
             MovementPanel.IsEnabled = allowed;
             SaveButton.IsEnabled = allowed;
+
+            NewestFirstBox.IsEnabled =
+                _historyLoaded && _historyEntries.Count > 1;
         }
 
         if (saved)

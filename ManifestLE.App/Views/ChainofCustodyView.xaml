@@ -34,13 +34,11 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
                                 <Setter TargetName="ItemBorder"
-                                        Property="Background"
-                                        Value="#263B50"/>
+                                        Property="Background" Value="#263B50"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="ItemBorder"
-                                        Property="Background"
-                                        Value="#1479D1"/>
+                                        Property="Background" Value="#1479D1"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -57,9 +55,9 @@
                     <ControlTemplate TargetType="ComboBox">
                         <Grid>
                             <ToggleButton Focusable="False"
-                                IsChecked="{Binding IsDropDownOpen,
-                                    RelativeSource={RelativeSource TemplatedParent},
-                                    Mode=TwoWay}">
+                                          IsChecked="{Binding IsDropDownOpen,
+                                          RelativeSource={RelativeSource TemplatedParent},
+                                          Mode=TwoWay}">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
                                         <Border Background="#171A1F"
@@ -76,7 +74,7 @@
 
                             <TextBlock
                                 Text="{Binding SelectedItem.Name,
-                                    RelativeSource={RelativeSource TemplatedParent}}"
+                                RelativeSource={RelativeSource TemplatedParent}}"
                                 Margin="10,0,35,0"
                                 VerticalAlignment="Center"
                                 TextWrapping="NoWrap"
@@ -93,7 +91,7 @@
                                         BorderThickness="1"
                                         MaxHeight="280"
                                         MinWidth="{Binding ActualWidth,
-                                            RelativeSource={RelativeSource TemplatedParent}}">
+                                        RelativeSource={RelativeSource TemplatedParent}}">
                                     <ScrollViewer>
                                         <ItemsPresenter/>
                                     </ScrollViewer>
@@ -124,13 +122,56 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="ButtonBorder"
-                                        Property="Background"
-                                        Value="#1168B5"/>
+                                        Property="Background" Value="#1168B5"/>
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="ButtonBorder"
-                                        Property="BorderBrush"
-                                        Value="White"/>
+                                        Property="BorderBrush" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal">
+                            <Border x:Name="CheckBorder"
+                                    Width="20"
+                                    Height="20"
+                                    Background="#171A1F"
+                                    BorderBrush="#64748B"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                <TextBlock x:Name="CheckMark"
+                                           Text="✓"
+                                           Visibility="Collapsed"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontWeight="Bold"/>
+                            </Border>
+                            <ContentPresenter Margin="9,0,0,0"
+                                              VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="CheckBorder"
+                                        Property="Background" Value="#1479D1"/>
+                                <Setter TargetName="CheckMark"
+                                        Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="CheckBorder"
+                                        Property="BorderBrush" Value="#75B9F1"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.5"/>
@@ -152,7 +193,7 @@
             <TextBlock Text="Chain of Custody"
                        FontSize="28"
                        FontWeight="SemiBold"/>
-            <TextBlock Text="Review history, transfer storage, check out, or check in an item."
+            <TextBlock Text="Review item history and current custody status."
                        Foreground="#9CA7B5"
                        Margin="0,8,0,0"/>
         </StackPanel>
@@ -186,6 +227,7 @@
                                    Margin="0,0,0,18"/>
 
                         <StackPanel x:Name="MovementPanel"
+                                    Visibility="Collapsed"
                                     IsEnabled="False">
                             <TextBlock Text="Action *"/>
                             <ComboBox x:Name="ActionBox"
@@ -234,15 +276,37 @@
                         <Button x:Name="SaveButton"
                                 Content="Record Movement"
                                 HorizontalAlignment="Right"
+                                Visibility="Collapsed"
                                 IsEnabled="False"
                                 Click="SaveButton_Click"/>
                     </StackPanel>
                 </Border>
 
-                <TextBlock Text="Custody History"
-                           FontSize="20"
-                           FontWeight="SemiBold"
-                           Margin="0,24,0,12"/>
+                <Grid Margin="0,24,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Text="Custody History"
+                               FontSize="20"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"/>
+
+                    <CheckBox x:Name="NewestFirstBox"
+                              Grid.Column="1"
+                              Content="Newest first"
+                              IsChecked="False"
+                              IsEnabled="False"
+                              Margin="16,0,0,0"
+                              Checked="HistoryOrder_Changed"
+                              Unchecked="HistoryOrder_Changed"/>
+                </Grid>
+
+                <TextBlock x:Name="HistoryOrderText"
+                           Text="Select an item to view its timeline."
+                           Foreground="#9CA7B5"
+                           Margin="0,0,0,8"/>
 
                 <TextBox x:Name="HistoryBox"
                          IsReadOnly="True"
