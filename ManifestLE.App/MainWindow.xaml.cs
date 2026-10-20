@@ -107,8 +107,9 @@ public partial class MainWindow : Window
 
             DashboardWelcomeText.Text =
                 $"Signed in to {agency.Name}. " +
-                "Use Item Intake to submit property and " +
-                "the registers to inspect records.";
+                "Use Item Intake to submit property, " +
+                "Intake Reviews to track submissions, " +
+                "and the registers to inspect records.";
 
             if (CanAccessAudits())
             {
@@ -121,7 +122,7 @@ public partial class MainWindow : Window
             if (IsAdministrator())
             {
                 DashboardWelcomeText.Text +=
-                    " Use User Administration to create individual accounts.";
+                    " Use User Administration to manage officer accounts.";
             }
 
             ShowDashboard();
@@ -202,6 +203,21 @@ public partial class MainWindow : Window
             new EvidenceIntakeView(_currentUser.Id);
 
         SetActiveNavigation(IntakeButton);
+    }
+
+    private void IntakeReviewsButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (_currentUser is not { IsActive: true })
+        {
+            return;
+        }
+
+        WorkspaceContent.Content =
+            new IntakeReviewsView(_currentUser.Id);
+
+        SetActiveNavigation(IntakeReviewsButton);
     }
 
     private void EvidenceRecordsButton_Click(
@@ -333,6 +349,7 @@ public partial class MainWindow : Window
         {
             DashboardButton,
             IntakeButton,
+            IntakeReviewsButton,
             EvidenceRecordsButton,
             FoundPropertyButton,
             SafekeepingButton,

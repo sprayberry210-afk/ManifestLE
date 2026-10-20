@@ -109,6 +109,11 @@
                                 Style="{StaticResource NavigationButton}"
                                 Click="IntakeButton_Click"/>
 
+                        <Button x:Name="IntakeReviewsButton"
+                                Content="Intake Reviews"
+                                Style="{StaticResource NavigationButton}"
+                                Click="IntakeReviewsButton_Click"/>
+
                         <TextBlock Text="REGISTERS"
                                    Style="{StaticResource NavigationSection}"/>
 

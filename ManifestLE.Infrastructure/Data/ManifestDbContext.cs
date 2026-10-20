@@ -45,6 +45,9 @@ public class ManifestDbContext : DbContext
     public DbSet<InventoryAuditFollowUp> InventoryAuditFollowUps =>
         Set<InventoryAuditFollowUp>();
 
+    public DbSet<IntakeReview> IntakeReviews =>
+        Set<IntakeReview>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -487,13 +490,14 @@ public class ManifestDbContext : DbContext
                 x.RecordedAt
             });
 
-            // Multiple investigation notes are allowed.
-            // Only one resolution is allowed for each audit item.
             entity.HasIndex(x => x.InventoryAuditItemId)
                 .HasDatabaseName(
                     "UX_InventoryAuditFollowUps_OneResolutionPerItem")
                 .IsUnique()
                 .HasFilter("\"Type\" = 'Resolved'");
         });
+
+        modelBuilder.ApplyConfiguration(
+            new IntakeReviewConfiguration());
     }
 }

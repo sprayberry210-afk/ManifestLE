@@ -327,6 +327,90 @@ namespace ManifestLE.Infrastructure.Migrations
                     b.ToTable("FoundPropertyItems");
                 });
 
+            modelBuilder.Entity("ManifestLE.Core.Models.IntakeReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("AcceptedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("AcceptedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CorrectionInstructions")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("EvidenceItemId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("FoundPropertyItemId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("LastReviewedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("LastReviewedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("LastSubmittedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("SafekeepingItemId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("SubmittedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AcceptedByUserId");
+
+                    b.HasIndex("EvidenceItemId")
+                        .IsUnique();
+
+                    b.HasIndex("FoundPropertyItemId")
+                        .IsUnique();
+
+                    b.HasIndex("LastReviewedByUserId");
+
+                    b.HasIndex("SafekeepingItemId")
+                        .IsUnique();
+
+                    b.HasIndex("SubmittedByUserId");
+
+                    b.HasIndex("Status", "SubmittedByUserId");
+
+                    b.ToTable("IntakeReviews", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_IntakeReviews_Acceptance", "(\r\n    \"Status\" = 'Accepted'\r\n    AND \"AcceptedByUserId\" IS NOT NULL\r\n    AND \"AcceptedAt\" IS NOT NULL\r\n)\r\nOR\r\n(\r\n    \"Status\" <> 'Accepted'\r\n    AND \"AcceptedByUserId\" IS NULL\r\n    AND \"AcceptedAt\" IS NULL\r\n)");
+
+                            t.HasCheckConstraint("CK_IntakeReviews_CorrectionInstructions", "length(\"CorrectionInstructions\") <= 4000\r\nAND\r\n(\r\n    \"Status\" NOT IN (\r\n        'NeedsCorrection',\r\n        'Resubmitted'\r\n    )\r\n    OR length(trim(\"CorrectionInstructions\")) > 0\r\n)");
+
+                            t.HasCheckConstraint("CK_IntakeReviews_ExactlyOneItem", "(\r\n    CASE WHEN \"EvidenceItemId\" IS NOT NULL\r\n        THEN 1 ELSE 0 END\r\n    +\r\n    CASE WHEN \"FoundPropertyItemId\" IS NOT NULL\r\n        THEN 1 ELSE 0 END\r\n    +\r\n    CASE WHEN \"SafekeepingItemId\" IS NOT NULL\r\n        THEN 1 ELSE 0 END\r\n) = 1");
+
+                            t.HasCheckConstraint("CK_IntakeReviews_Reviewer", "(\r\n    \"Status\" = 'PendingReview'\r\n    AND \"LastReviewedByUserId\" IS NULL\r\n    AND \"LastReviewedAt\" IS NULL\r\n)\r\nOR\r\n(\r\n    \"Status\" IN (\r\n        'NeedsCorrection',\r\n        'Resubmitted',\r\n        'Accepted'\r\n    )\r\n    AND \"LastReviewedByUserId\" IS NOT NULL\r\n    AND \"LastReviewedAt\" IS NOT NULL\r\n)");
+
+                            t.HasCheckConstraint("CK_IntakeReviews_Revision", "\"Revision\" >= 0");
+
+                            t.HasCheckConstraint("CK_IntakeReviews_Status", "\"Status\" IN (\r\n    'PendingReview',\r\n    'NeedsCorrection',\r\n    'Resubmitted',\r\n    'Accepted'\r\n)");
+                        });
+                });
+
             modelBuilder.Entity("ManifestLE.Core.Models.InventoryAudit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -725,6 +809,40 @@ namespace ManifestLE.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("CurrentStorageLocationId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("ManifestLE.Core.Models.IntakeReview", b =>
+                {
+                    b.HasOne("ManifestLE.Core.Models.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("AcceptedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ManifestLE.Core.Models.EvidenceItem", null)
+                        .WithMany()
+                        .HasForeignKey("EvidenceItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ManifestLE.Core.Models.FoundPropertyItem", null)
+                        .WithMany()
+                        .HasForeignKey("FoundPropertyItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ManifestLE.Core.Models.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("LastReviewedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ManifestLE.Core.Models.SafekeepingItem", null)
+                        .WithMany()
+                        .HasForeignKey("SafekeepingItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ManifestLE.Core.Models.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("SubmittedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ManifestLE.Core.Models.InventoryAudit", b =>

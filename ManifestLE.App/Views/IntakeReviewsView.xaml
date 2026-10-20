@@ -1,0 +1,377 @@
+﻿<UserControl x:Class="ManifestLE.App.Views.IntakeReviewsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#15181D"
+             Foreground="#F4F6F8"
+             FontFamily="Segoe UI">
+
+    <UserControl.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#171A1F"/>
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="CaretBrush" Value="#F4F6F8"/>
+            <Setter Property="BorderBrush" Value="#64748B"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+
+        <Style TargetType="RadioButton">
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="Margin" Value="0,0,20,8"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#1479D1"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="18,12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="6"
+                                BorderBrush="Transparent"
+                                BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background" Value="#1168B5"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="ButtonBorder"
+                                        Property="BorderBrush" Value="#75B9F1"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="#171A1F"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder"
+                                        Property="Background" Value="#263B50"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder"
+                                        Property="Background" Value="#1479D1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ComboBox">
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="MinHeight" Value="42"/>
+            <Setter Property="Margin" Value="0,6,0,16"/>
+            <Setter Property="DisplayMemberPath" Value="Name"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen,
+                                          RelativeSource={RelativeSource TemplatedParent},
+                                          Mode=TwoWay}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="#171A1F"
+                                                BorderBrush="#64748B"
+                                                BorderThickness="1">
+                                            <TextBlock Text="▼"
+                                                       HorizontalAlignment="Right"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,12,0"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+
+                            <TextBlock Text="{Binding SelectedItem.Name,
+                                       RelativeSource={RelativeSource TemplatedParent}}"
+                                       Margin="10,0,35,0"
+                                       VerticalAlignment="Center"
+                                       TextWrapping="NoWrap"
+                                       TextTrimming="CharacterEllipsis"
+                                       IsHitTestVisible="False"/>
+
+                            <Popup x:Name="PART_Popup"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Bottom"
+                                   AllowsTransparency="True"
+                                   Focusable="False">
+                                <Border Background="#171A1F"
+                                        BorderBrush="#64748B"
+                                        BorderThickness="1"
+                                        MaxHeight="280"
+                                        MinWidth="{Binding ActualWidth,
+                                        RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ScrollViewer>
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#171A1F"/>
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="10"/>
+        </Style>
+
+        <Style TargetType="DataGridCell">
+            <Setter Property="Foreground" Value="#F4F6F8"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Background="{TemplateBinding Background}"
+                                Padding="8">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#263B50"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel>
+            <TextBlock Text="Intake Reviews"
+                       FontSize="28" FontWeight="SemiBold"/>
+
+            <TextBlock
+                Text="Track submitted property, review status, and correction instructions."
+                Foreground="#9CA7B5" Margin="0,8,0,20"/>
+
+            <Border Background="#20242A" CornerRadius="8"
+                    Padding="20" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Search submissions"/>
+
+                    <Grid Margin="0,6,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBox x:Name="SearchBox"
+                                 MaxLength="200"
+                                 TextChanged="SearchBox_TextChanged"/>
+
+                        <Button x:Name="RefreshButton"
+                                Grid.Column="2"
+                                Content="Refresh"
+                                Click="RefreshButton_Click"/>
+                    </Grid>
+
+                    <WrapPanel x:Name="FilterPanel">
+                        <RadioButton x:Name="OpenFilter"
+                                     Content="Open"
+                                     GroupName="ReviewStatus"
+                                     Checked="Filter_Changed"/>
+                        <RadioButton x:Name="CorrectionFilter"
+                                     Content="Needs Correction"
+                                     GroupName="ReviewStatus"
+                                     Checked="Filter_Changed"/>
+                        <RadioButton x:Name="AllFilter"
+                                     Content="All"
+                                     GroupName="ReviewStatus"
+                                     Checked="Filter_Changed"/>
+                    </WrapPanel>
+
+                    <TextBlock x:Name="SummaryText"
+                               Foreground="#9CA7B5" Margin="0,8,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <TextBlock x:Name="StatusText"
+                       Visibility="Collapsed" Margin="0,0,0,16"/>
+
+            <DataGrid x:Name="ReviewsGrid"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      CanUserSortColumns="False"
+                      SelectionMode="Single"
+                      SelectionUnit="FullRow"
+                      SelectionChanged="ReviewsGrid_SelectionChanged"
+                      HeadersVisibility="Column"
+                      RowHeight="44"
+                      MaxHeight="352"
+                      VerticalAlignment="Top"
+                      Background="#20242A"
+                      RowBackground="#20242A"
+                      AlternatingRowBackground="#171A1F"
+                      Foreground="#F4F6F8"
+                      BorderBrush="#2D333B"
+                      GridLinesVisibility="None"
+                      ScrollViewer.CanContentScroll="True"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.ScrollUnit="Pixel"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Register"
+                                        Binding="{Binding RegisterText}" Width="120"/>
+                    <DataGridTextColumn Header="Case / Report"
+                                        Binding="{Binding ReportNumber}" Width="130"/>
+                    <DataGridTextColumn Header="Item"
+                                        Binding="{Binding ItemNumber}" Width="65"/>
+                    <DataGridTextColumn Header="Description"
+                                        Binding="{Binding Description}"
+                                        Width="2*" MinWidth="160"/>
+                    <DataGridTextColumn Header="Submitted By"
+                                        Binding="{Binding SubmittedBy}"
+                                        Width="*" MinWidth="140"/>
+                    <DataGridTextColumn Header="Status"
+                                        Binding="{Binding StatusText}" Width="145"/>
+                    <DataGridTextColumn Header="Submitted"
+                                        Binding="{Binding SubmittedLocal}" Width="145"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <Border Background="#20242A" CornerRadius="8"
+                    Padding="20" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Text="Submission Details"
+                               FontSize="20" FontWeight="SemiBold"
+                               Margin="0,0,0,12"/>
+
+                    <TextBox x:Name="DetailsBox"
+                             IsReadOnly="True"
+                             TextWrapping="Wrap"
+                             AcceptsReturn="True"
+                             MinHeight="180"
+                             Text="Select a submission to view its details."/>
+                </StackPanel>
+            </Border>
+
+            <Border x:Name="CorrectionCard"
+                    Visibility="Collapsed"
+                    Background="#20242A" CornerRadius="8"
+                    Padding="20" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Text="Correct Your Submission"
+                               FontSize="20" FontWeight="SemiBold"/>
+
+                    <TextBlock
+                        Text="Update the returned intake documentation and submit it for another review."
+                        Foreground="#9CA7B5" Margin="0,8,0,16"/>
+
+                    <Button x:Name="CorrectAndResubmitButton"
+                            Content="Correct and Resubmit"
+                            HorizontalAlignment="Right"
+                            Click="CorrectAndResubmitButton_Click"/>
+                </StackPanel>
+            </Border>
+
+            <Border x:Name="DecisionCard"
+                    Visibility="Collapsed"
+                    Background="#20242A" CornerRadius="8"
+                    Padding="20" Margin="0,16,0,0">
+                <StackPanel x:Name="DecisionPanel">
+                    <TextBlock Text="Review Decision"
+                               FontSize="20" FontWeight="SemiBold"/>
+
+                    <TextBlock x:Name="DecisionItemText"
+                               Foreground="#9CA7B5" Margin="0,8,0,20"/>
+
+                    <TextBlock Text="Request Correction"
+                               FontSize="17" FontWeight="SemiBold"/>
+
+                    <TextBlock
+                        Text="Explain what the submitting officer needs to correct. This does not move the property."
+                        Foreground="#9CA7B5" Margin="0,6,0,8"/>
+
+                    <TextBox x:Name="CorrectionInstructionsBox"
+                             MaxLength="4000"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             MinHeight="90"
+                             Margin="0,0,0,12"/>
+
+                    <Button x:Name="RequestCorrectionButton"
+                            Content="Request Correction"
+                            HorizontalAlignment="Right"
+                            Click="RequestCorrectionButton_Click"/>
+
+                    <Border Height="1" Background="#3B424C"
+                            Margin="0,24,0,24"/>
+
+                    <TextBlock Text="Accept into Permanent Storage"
+                               FontSize="17" FontWeight="SemiBold"
+                               Margin="0,0,0,12"/>
+
+                    <TextBlock Text="Permanent storage location *"/>
+                    <ComboBox x:Name="PermanentLocationBox"/>
+
+                    <TextBlock Text="Receipt notes"/>
+                    <TextBox x:Name="ReceiptNotesBox"
+                             MaxLength="3800"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             MinHeight="70"
+                             Margin="0,6,0,16"/>
+
+                    <CheckBox x:Name="ReceiptConfirmedBox"
+                              Margin="0,0,0,16">
+                        <TextBlock
+                            Text="I have physically received this item and verified its packaging."/>
+                    </CheckBox>
+
+                    <Button x:Name="AcceptButton"
+                            Content="Accept into Permanent Storage"
+                            HorizontalAlignment="Right"
+                            Click="AcceptButton_Click"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

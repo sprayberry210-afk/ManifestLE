@@ -292,6 +292,7 @@ public partial class EvidenceIntakeView : UserControl
         UpdateControls();
 
         bool saved = false;
+        bool submittedForReview = false;
         Guid recordId = Guid.NewGuid();
 
         try
@@ -373,10 +374,12 @@ public partial class EvidenceIntakeView : UserControl
             string ownerName = OwnerNameBox.Text.Trim();
             string ownerContact = OwnerContactBox.Text.Trim();
             string entityType;
+            PropertyRegisterKind register;
 
             if (type == 0)
             {
                 entityType = nameof(EvidenceItem);
+                register = PropertyRegisterKind.Evidence;
 
                 database.EvidenceItems.Add(new EvidenceItem
                 {
@@ -391,6 +394,7 @@ public partial class EvidenceIntakeView : UserControl
                     OwnerName = ownerName,
                     OwnerContact = ownerContact,
                     Notes = notes,
+                    Status = EvidenceStatus.InCustody,
                     CurrentStorageLocationId = validatedLocation.Id
                 });
 
@@ -399,6 +403,7 @@ public partial class EvidenceIntakeView : UserControl
             else if (type == 1)
             {
                 entityType = nameof(FoundPropertyItem);
+                register = PropertyRegisterKind.FoundProperty;
 
                 database.FoundPropertyItems.Add(new FoundPropertyItem
                 {
@@ -415,6 +420,7 @@ public partial class EvidenceIntakeView : UserControl
                     FinderName = FinderNameBox.Text.Trim(),
                     FinderContact = FinderContactBox.Text.Trim(),
                     Notes = notes,
+                    Status = EvidenceStatus.InCustody,
                     CurrentStorageLocationId = validatedLocation.Id
                 });
 
@@ -423,6 +429,8 @@ public partial class EvidenceIntakeView : UserControl
             else
             {
                 entityType = nameof(SafekeepingItem);
+                register = PropertyRegisterKind.Safekeeping;
+
                 bool isFirearm = IsFirearmBox.IsChecked == true;
 
                 database.SafekeepingItems.Add(new SafekeepingItem
@@ -449,6 +457,7 @@ public partial class EvidenceIntakeView : UserControl
                     Caliber = isFirearm
                         ? CaliberBox.Text.Trim() : string.Empty,
                     Notes = notes,
+                    Status = EvidenceStatus.InCustody,
                     CurrentStorageLocationId = validatedLocation.Id
                 });
 
@@ -471,6 +480,20 @@ public partial class EvidenceIntakeView : UserControl
                     $"Custody event: {custody.Id}."
             });
 
+            if (validatedLocation.LocationType ==
+                StorageLocationType.Temporary)
+            {
+                await IntakeReviewSubmissionService.AddAsync(
+                    database,
+                    _userId,
+                    register,
+                    recordId);
+
+                submittedForReview = true;
+            }
+
+            // One save and commit covers the property item,
+            // custody event, review, and audit entries.
             await database.SaveChangesAsync();
             await transaction.CommitAsync();
 
@@ -481,8 +504,9 @@ public partial class EvidenceIntakeView : UserControl
                   sqlite.SqliteExtendedErrorCode == 2067)
         {
             ShowStatus(
-                "That case/report and item number already exist " +
-                "in the selected register.",
+                "Intake could not be saved because a unique value " +
+                "is already in use. Check the case/report and item " +
+                "number before trying again.",
                 true);
         }
         catch (Exception)
@@ -502,8 +526,11 @@ public partial class EvidenceIntakeView : UserControl
             ClearAfterSave();
 
             ShowStatus(
-                $"Saved {report}, item {itemNumber}, " +
-                "with its initial custody and audit records.",
+                submittedForReview
+                    ? $"Saved {report}, item {itemNumber}. " +
+                      "Submitted for review in temporary storage."
+                    : $"Saved {report}, item {itemNumber}, " +
+                      "with its initial custody and audit records.",
                 false);
         }
     }
